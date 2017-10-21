@@ -77,6 +77,22 @@ macro multiImpl(c: Column, cTyped: untyped, types: untyped, procBody: untyped): 
   result = newStmtList(result)
   echo result.repr
 
+template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
+  if c of TypedCol[int16]:
+    let `cTyped` {.inject.} = c.assertType(int16)
+    procBody
+  elif c of TypedCol[int32]:
+    let `cTyped` {.inject.} = c.assertType(int32)
+    procBody
+  elif c of TypedCol[int64]:
+    let `cTyped` {.inject.} = c.assertType(int64)
+    procBody
+  elif c of TypedCol[float32]:
+    let `cTyped` {.inject.} = c.assertType(float32)
+    procBody
+  elif c of TypedCol[float64]:
+    let `cTyped` {.inject.} = c.assertType(float64)
+    procBody
 
 proc sum*[T](c: TypedCol[T]): float =
   var sum = 0.0
@@ -97,10 +113,15 @@ proc sumExplicit*(c: Column): float =
   else:
     raise newException(ValueError, "sum not implemented for type: " & c.typeName())
 
+#[
 proc sum*(c: Column): float =
   multiImpl(c, cTyped, [int, float32]):#, float32, float64]):
     return cTyped.sum()
+]#
 
+proc sum*(c: Column): float =
+  defaultImpls(c, cTyped):
+    return cTyped.sum()
 
 
 proc mean*(c: Column): float =

@@ -63,10 +63,10 @@ proc main() =
 
   echo " *** Benchmark: sum"
   benchmarkSum[int16](N)
-  #benchmarkSum[int32](N)
-  #benchmarkSum[int64](N)
+  benchmarkSum[int32](N)
+  benchmarkSum[int64](N)
   benchmarkSum[float32](N)
-  #benchmarkSum[float64](N)
+  benchmarkSum[float64](N)
 
   echo " *** Benchmark: sum (arraymancer)"
   benchmarkSumArraymancer[int16](N)
