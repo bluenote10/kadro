@@ -11,9 +11,9 @@ import arraymancer
 
 # template to simplify timed execution
 template runTimed(label, body: untyped) =
-  let t1 = epochTime()
-  let iter = 1000
+  let iter = 100
   GC_fullCollect()
+  let t1 = epochTime()
   for i in 1 .. iter:
     body
   let t2 = epochTime()
@@ -40,13 +40,13 @@ proc benchmarkSumArraymancer[T](N: int) =
   runTimed name(T):
     let mean {.used.} = col.sum()
 
+proc benchmarkMax[T](N: int) =
+  let col = newCol[T](N)
+  runTimed name(T):
+    let max {.used.} = col.max(T)
 
-proc main() =
-  if paramCount() != 1:
-    echo "ERROR: Expected argument N."
-    quit(1)
-  let N = paramStr(1).parseInt
 
+proc allBenchmarkZeros(N: int) =
   echo " *** Benchmark: zeros"
   benchmarkZeros[int16](N)
   benchmarkZeros[int32](N)
@@ -61,6 +61,7 @@ proc main() =
   benchmarkZerosArraymancer[float32](N)
   benchmarkZerosArraymancer[float64](N)
 
+proc allBenchmarkSum(N: int) =
   echo " *** Benchmark: sum"
   benchmarkSum[int16](N)
   benchmarkSum[int32](N)
@@ -74,6 +75,26 @@ proc main() =
   benchmarkSumArraymancer[int64](N)
   benchmarkSumArraymancer[float32](N)
   benchmarkSumArraymancer[float64](N)
+
+proc allBenchmarkMax(N: int) =
+  echo " *** Benchmark: max"
+  benchmarkMax[int16](N)
+  benchmarkMax[int32](N)
+  benchmarkMax[int64](N)
+  benchmarkMax[float32](N)
+  benchmarkMax[float64](N)
+
+
+proc main() =
+  if paramCount() != 1:
+    echo "ERROR: Expected argument N."
+    quit(1)
+  let N = paramStr(1).parseInt
+
+  #allBenchmarkZeros(N)
+  #allBenchmarkSum(N)
+  allBenchmarkMax(N)
+
 
 
 when isMainModule:

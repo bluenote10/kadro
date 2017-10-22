@@ -4,6 +4,13 @@ import strutils
 import typetraits
 import macros
 
+proc high(T: typedesc[SomeReal]): T {.used.} = Inf
+proc low(T: typedesc[SomeReal]): T {.used.} = NegInf
+
+# -----------------------------------------------------------------------------
+# Main typedefs
+# -----------------------------------------------------------------------------
+
 type
   Column* = ref object of RootObj
 
@@ -50,6 +57,9 @@ template assertType(c: Column, T: typedesc): TypedCol[T] =
     raise newException(ValueError, msg)
   cast[TypedCol[T]](c)
 
+template assertTypeUnsafe(c: Column, T: typedesc): TypedCol[T] =
+  cast[TypedCol[T]](c)
+
 template toTyped(newCol: untyped, c: Column, T: typedesc): untyped =
   ## Alternative to assertType.
   ## Pro: - The user doesn't have to decide between let or var.
@@ -58,6 +68,9 @@ template toTyped(newCol: untyped, c: Column, T: typedesc): untyped =
     raise newException(ValueError, "Expected column of type " & name(T))
   let newCol = cast[TypedCol[T]](c)
 
+# -----------------------------------------------------------------------------
+# Macro helpers
+# -----------------------------------------------------------------------------
 
 macro multiImpl(c: Column, cTyped: untyped, types: untyped, procBody: untyped): untyped =
   echo c.treeRepr
@@ -69,7 +82,7 @@ macro multiImpl(c: Column, cTyped: untyped, types: untyped, procBody: untyped): 
     let elifBranch = newNimNode(nnkElifBranch)
     let cond = infix(c, "of", newNimNode(nnkBracketExpr).add(bindSym"TypedCol", t))
     let body = newStmtList()
-    body.add(newLetStmt(cTyped, newCall(bindSym"assertType", c, t)))
+    body.add(newLetStmt(cTyped, newCall(bindSym"assertTypeUnsafe", c, t)))
     body.add(procBody)
     elifBranch.add(cond)
     elifBranch.add(body)
@@ -78,21 +91,29 @@ macro multiImpl(c: Column, cTyped: untyped, types: untyped, procBody: untyped): 
   echo result.repr
 
 template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
-  if c of TypedCol[int16]:
-    let `cTyped` {.inject.} = c.assertType(int16)
+  if c of TypedCol[int8]:
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(int8)
+    procBody
+  elif c of TypedCol[int16]:
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(int16)
     procBody
   elif c of TypedCol[int32]:
-    let `cTyped` {.inject.} = c.assertType(int32)
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(int32)
     procBody
   elif c of TypedCol[int64]:
-    let `cTyped` {.inject.} = c.assertType(int64)
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(int64)
     procBody
   elif c of TypedCol[float32]:
-    let `cTyped` {.inject.} = c.assertType(float32)
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(float32)
     procBody
   elif c of TypedCol[float64]:
-    let `cTyped` {.inject.} = c.assertType(float64)
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(float64)
     procBody
+
+
+# -----------------------------------------------------------------------------
+# Aggregations
+# -----------------------------------------------------------------------------
 
 proc sum*[T](c: TypedCol[T]): float =
   var sum = 0.0
@@ -100,7 +121,7 @@ proc sum*[T](c: TypedCol[T]): float =
     sum += x.float
   return sum
 
-proc sumExplicit*(c: Column): float =
+proc sumExplicit(c: Column): float =
   if c of TypedCol[int]:
     let cTyped = c.assertType(int)
     return cTyped.sum()
@@ -115,17 +136,58 @@ proc sumExplicit*(c: Column): float =
 
 #[
 proc sum*(c: Column): float =
-  multiImpl(c, cTyped, [int, float32]):#, float32, float64]):
+  multiImpl(c, cTyped, [int16, int32, int64, float32, float64]):
     return cTyped.sum()
 ]#
 
 proc sum*(c: Column): float =
   defaultImpls(c, cTyped):
     return cTyped.sum()
+  raise newException(ValueError, "sum not implemented for type: " & c.typeName())
 
+proc mean*[T](c: TypedCol[T]): float =
+  c.sum() / c.len.float
 
 proc mean*(c: Column): float =
-  c.sum / c.len.float
+  c.sum() / c.len.float
+
+proc max*[T](c: TypedCol[T]): T =
+  if c.len == 0:
+    return T(0)
+  else:
+    var curMax = low(T)
+    for i in 0 ..< c.len:
+      if c.arr[i] > curMax:
+        curMax = c.arr[i]
+    return curMax
+
+proc maxAlternative*[T](c: TypedCol[T]): T =
+  ## Optimized implementation. Seems to be faster for larger types (64 bit)
+  ## but slower for smaller types (16 bit)
+  if c.len == 0:
+    return low(T)
+  else:
+    var curMax = low(T)
+    var i = 0
+    let nTwoAligned = (c.len shr 1 shl 1)
+    while i < nTwoAligned:
+      let localMax = if c.arr[i] > c.arr[i+1]: c.arr[i] else: c.arr[i+1]
+      if localMax > curMax:
+        curMax = localMax
+      i += 2
+    if i < c.len - 1:
+      if c.arr[^1] > curMax:
+        curMax = c.arr[^1]
+    return curMax
+
+proc max*(c: Column, T: typedesc): T =
+  let cTyped = c.assertType(T)
+  return cTyped.maxAlternative()
+
+proc max*(c: Column): float =
+  defaultImpls(c, cTyped):
+    return cTyped.maxAlternative().float
+  raise newException(ValueError, "max not implemented for type: " & c.typeName())
 
 
 when isMainModule:

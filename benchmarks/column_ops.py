@@ -56,13 +56,23 @@ def bench_construction(N):
 
 
 def bench_mean(N):
-    print(" *** Benchmark mean")
+    print(" *** Benchmark sum")
     dtypes = [np.int16, np.int32, np.int64, np.float32, np.float64]
     for dtype in dtypes:
         arr = generate_zeros_np(N, dtype)
-        with TimedContext("Mean {}".format(dtype)):
+        with TimedContext("{}".format(dtype)):
             mean = arr.mean()
-        assert mean > 0
+        del arr
+        gc.collect()
+
+
+def bench_max(N):
+    print(" *** Benchmark sum")
+    dtypes = [np.int16, np.int32, np.int64, np.float32, np.float64]
+    for dtype in dtypes:
+        arr = generate_zeros_np(N, dtype)
+        with TimedContext("{}".format(dtype)):
+            max_val = arr.max()
         del arr
         gc.collect()
 
@@ -76,3 +86,4 @@ if __name__ == "__main__":
 
     bench_construction(N)
     bench_mean(N)
+    bench_max(N)
