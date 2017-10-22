@@ -4,85 +4,107 @@ import tables
 import times
 import strinterp
 import typetraits
+import future
+import macros
 
 import ../src/columns
 
 import arraymancer
+#import tensor/aggregate
+
+type
+  Benchmark = int -> float
+
 
 # template to simplify timed execution
-template runTimed(label, body: untyped) =
-  let iter = 100
+template runTimed(body: untyped): float =
   GC_fullCollect()
   let t1 = epochTime()
-  for i in 1 .. iter:
-    body
+  body
   let t2 = epochTime()
-  let runtime {.inject.} = (t2 - t1) * 1000 / iter.float
-  # echo label, ": ", runtime
-  let localLabel {.inject.} = label
-  echo fmt"${localLabel}%-60s ${runtime}%6.3f ms"
+  let runtime = (t2 - t1) * 1000
+  runtime
 
-proc benchmarkZeros[T](N: int) =
-  runTimed name(T):
+proc benchmarkZeros[T](N: int): float =
+  let runTime = runTimed:
     let col {.used.} = newCol[T](N)
+  runTime
 
-proc benchmarkZerosArraymancer[T](N: int) =
-  runTimed name(T):
-    let col {.used.} = zeros([N], T)
+proc benchmarkZerosArraymancer[T](N: int): float =
+  let runTime = runTimed:
+    let col {.used.} = zeros[T](N)
+  runTime
 
-proc benchmarkSum[T](N: int) =
+proc benchmarkSum[T](N: int): float =
   let col = newCol[T](N)
-  runTimed name(T):
+  let runTime = runTimed:
     let mean {.used.} = col.sum()
+  runTime
 
-proc benchmarkSumArraymancer[T](N: int) =
-  let col = zeros([N], T)
-  runTimed name(T):
+proc benchmarkSumArraymancer[T](N: int): float =
+  let col = zeros[T](N)
+  let runTime = runTimed:
     let mean {.used.} = col.sum()
+  runTime
 
-proc benchmarkMax[T](N: int) =
+proc benchmarkMax[T](N: int): float =
   let col = newCol[T](N)
-  runTimed name(T):
+  let runTime = runTimed:
     let max {.used.} = col.max(T)
+  runTime
 
+proc benchmarkMaxArraymancer[T](N: int): float =
+  let col = zeros[T](N)
+  let runTime = runTimed:
+    let max {.used.} = col.max()
+  runTime
+
+
+proc runBenchmarkRepeated(benchmark: Benchmark, label: string, N: int, iterations: int) =
+  var runTimeSum = 0.0
+  for i in 0 ..< iterations:
+    runTimeSum += benchmark(N)
+  let avgRunTime = runTimeSum / iterations.float
+  # echo label, ": ", runtime
+  echo fmt"${label}%-60s ${avgRunTime}%6.3f ms"
+
+macro makeArrayOverTypes(name: untyped): untyped =
+  ## Takes a generic function f and returns an array with generic instantiations:
+  ## [(f[int16], "int16", (f[int32], "int32"), ...]
+  result = newNimNode(nnkBracket)
+  let typeSymbols = [
+    bindsym"int16", bindsym"int32", bindsym"int64", bindsym"float32", bindsym"float64"
+  ]
+  for typeName in typeSymbols:
+    result.add(newPar(
+      newNimNode(nnkBracketExpr).add(name, typeName),
+      newStrLitNode($typeName)
+    ))
+  # echo "result: ", result.repr
 
 proc allBenchmarkZeros(N: int) =
   echo " *** Benchmark: zeros"
-  benchmarkZeros[int16](N)
-  benchmarkZeros[int32](N)
-  benchmarkZeros[int64](N)
-  benchmarkZeros[float32](N)
-  benchmarkZeros[float64](N)
-
+  for benchmark, label in makeArrayOverTypes(benchmarkZeros).items():
+    runBenchmarkRepeated(benchmark, label, N, 100)
   echo " *** Benchmark: zeros (arraymancer)"
-  benchmarkZerosArraymancer[int16](N)
-  benchmarkZerosArraymancer[int32](N)
-  benchmarkZerosArraymancer[int64](N)
-  benchmarkZerosArraymancer[float32](N)
-  benchmarkZerosArraymancer[float64](N)
+  for benchmark, label in makeArrayOverTypes(benchmarkZerosArraymancer).items():
+    runBenchmarkRepeated(benchmark, label, N, 100)
 
 proc allBenchmarkSum(N: int) =
   echo " *** Benchmark: sum"
-  benchmarkSum[int16](N)
-  benchmarkSum[int32](N)
-  benchmarkSum[int64](N)
-  benchmarkSum[float32](N)
-  benchmarkSum[float64](N)
-
+  for benchmark, label in makeArrayOverTypes(benchmarkSum).items():
+    runBenchmarkRepeated(benchmark, label, N, 100)
   echo " *** Benchmark: sum (arraymancer)"
-  benchmarkSumArraymancer[int16](N)
-  benchmarkSumArraymancer[int32](N)
-  benchmarkSumArraymancer[int64](N)
-  benchmarkSumArraymancer[float32](N)
-  benchmarkSumArraymancer[float64](N)
+  for benchmark, label in makeArrayOverTypes(benchmarkSumArraymancer).items():
+    runBenchmarkRepeated(benchmark, label, N, 100)
 
 proc allBenchmarkMax(N: int) =
   echo " *** Benchmark: max"
-  benchmarkMax[int16](N)
-  benchmarkMax[int32](N)
-  benchmarkMax[int64](N)
-  benchmarkMax[float32](N)
-  benchmarkMax[float64](N)
+  for benchmark, label in makeArrayOverTypes(benchmarkMax).items():
+    runBenchmarkRepeated(benchmark, label, N, 100)
+  echo " *** Benchmark: max (arraymancer)"
+  for benchmark, label in makeArrayOverTypes(benchmarkMaxArraymancer).items():
+    runBenchmarkRepeated(benchmark, label, N, 100)
 
 
 proc main() =
@@ -91,8 +113,8 @@ proc main() =
     quit(1)
   let N = paramStr(1).parseInt
 
-  #allBenchmarkZeros(N)
-  #allBenchmarkSum(N)
+  allBenchmarkZeros(N)
+  allBenchmarkSum(N)
   allBenchmarkMax(N)
 
 
