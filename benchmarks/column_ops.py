@@ -11,70 +11,77 @@ import gc
 
 class TimedContext(object):
 
-    def __init__(self, label):
-        self.label = label
+    def __init__(self):
+        self.runtime = None
 
     def __enter__(self):
+        gc.collect()
         self.t1 = time.time()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.t2 = time.time()
-        runtime = (self.t2 - self.t1) * 1000
-        print("{:<60s} {:6.3f} ms".format(self.label, runtime))
-        gc.collect()
+        self.runtime = (self.t2 - self.t1) * 1000
+        # print("{:<60s} {:6.3f} ms".format(self.label, runtime))
 
 
-def generate_zeros_np(N, dtype):
-    return np.zeros(N, dtype=dtype)
+def bench_zeros(dtype, N):
+    with TimedContext() as ctx:
+        data = np.zeros(N, dtype=dtype)
+    assert len(data) == N
+    return ctx.runtime
 
 
-def generate_range_np(N, dtype):
-    return np.arange(0, N, dtype=dtype)
+def bench_ones(dtype, N):
+    with TimedContext() as ctx:
+        data = np.ones(N, dtype=dtype)
+    assert len(data) == N
+    return ctx.runtime
 
 
-def bench_construction(N):
-    print(" *** Benchmark construction")
-    with TimedContext("Generating np.int16"):
-        arr = generate_zeros_np(N, np.int16)
-        del arr
-
-    with TimedContext("Generating np.int32"):
-        arr = generate_zeros_np(N, np.int32)
-        del arr
-
-    with TimedContext("Generating np.int64"):
-        arr = generate_zeros_np(N, np.int64)
-        del arr
-
-    with TimedContext("Generating np.float32"):
-        arr = generate_zeros_np(N, np.float32)
-        del arr
-
-    with TimedContext("Generating np.float64"):
-        arr = generate_zeros_np(N, np.float64)
-        del arr
+def bench_range(dtype, N):
+    with TimedContext() as ctx:
+        data = np.arange(0, N, dtype=dtype)
+    assert len(data) == N
+    return ctx.runtime
 
 
-def bench_mean(N):
-    print(" *** Benchmark sum")
-    dtypes = [np.int16, np.int32, np.int64, np.float32, np.float64]
+def bench_sum(dtype, N):
+    data = np.zeros(N, dtype)
+    with TimedContext() as ctx:
+        sum_val = data.sum()
+    assert sum_val > -1
+    return ctx.runtime
+
+
+def bench_max(dtype, N):
+    data = np.zeros(N, dtype)
+    with TimedContext() as ctx:
+        max_val = data.max()
+    assert max_val > -1
+    return ctx.runtime
+
+
+def run_benchmark_repeated(benchmark, label, N, iterations, dtypes):
+    print(" *** Benchmark: {}".format(label))
     for dtype in dtypes:
-        arr = generate_zeros_np(N, dtype)
-        with TimedContext("{}".format(dtype)):
-            mean = arr.mean()
-        del arr
-        gc.collect()
-
-
-def bench_max(N):
-    print(" *** Benchmark sum")
-    dtypes = [np.int16, np.int32, np.int64, np.float32, np.float64]
-    for dtype in dtypes:
-        arr = generate_zeros_np(N, dtype)
-        with TimedContext("{}".format(dtype)):
-            max_val = arr.max()
-        del arr
-        gc.collect()
+        runtime_sum = 0.0
+        runtime_min = None
+        runtime_max = None
+        for i in xrange(iterations):
+            runtime = benchmark(dtype, N)
+            runtime_sum += runtime
+            if runtime < runtime_min or runtime_min is None:
+                runtime_min = runtime
+            if runtime > runtime_max or runtime_max is None:
+                runtime_max = runtime
+        runtime_avg = runtime_sum / iterations
+        # echo label, ": ", runtime
+        print(
+            "{:<60s} {:6.3f} ms    {:6.3f} ms    {:6.3f} ms".format(
+                dtype.__name__, runtime_min, runtime_avg, runtime_max
+            )
+        )
 
 
 if __name__ == "__main__":
@@ -84,6 +91,10 @@ if __name__ == "__main__":
     else:
         N = int(sys.argv[1])
 
-    bench_construction(N)
-    bench_mean(N)
-    bench_max(N)
+    dtypes = [np.int16, np.int32, np.int64, np.float32, np.float64]
+
+    run_benchmark_repeated(bench_zeros, "zeros", N, 100, dtypes)
+    run_benchmark_repeated(bench_ones, "ones", N, 100, dtypes)
+    run_benchmark_repeated(bench_range, "range", N, 100, dtypes)
+    run_benchmark_repeated(bench_sum, "sum", N, 100, dtypes)
+    run_benchmark_repeated(bench_max, "max", N, 100, dtypes)
