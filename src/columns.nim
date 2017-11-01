@@ -3,6 +3,9 @@ import sequtils
 import strutils
 import typetraits
 import macros
+# import threadpool
+
+import tensor.backend.openmp
 
 proc high(T: typedesc[SomeReal]): T {.used.} = Inf
 proc low(T: typedesc[SomeReal]): T {.used.} = NegInf
@@ -40,8 +43,32 @@ method `len`*[T](c: TypedCol[T]): int =
 proc newCol*[T](s: seq[T]): Column =
   return TypedCol[T](arr: s)
 
-proc newCol*[T](length: int): Column =
-  return TypedCol[T](arr: newSeq[T](length))
+proc zeros*[T](length: int): Column =
+  let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
+  typedCol.arr.setLen(length)
+  #for i in 0 ..< length:
+  #  typedCol.arr[i] = T(0)
+  omp_parallel_countup(i, length):
+    typedCol.arr[i] = T(0)
+  return typedCol
+
+proc ones*[T](length: int): Column =
+  let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
+  typedCol.arr.setLen(length)
+  #for i in 0 ..< length:
+  #  typedCol.arr[i] = T(0)
+  omp_parallel_countup(i, length):
+    typedCol.arr[i] = T(1)
+  return typedCol
+
+proc range*[T](length: int): Column =
+  let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
+  typedCol.arr.setLen(length)
+  #for i in 0 ..< length:
+  #  typedCol.arr[i] = T(0)
+  omp_parallel_countup(i, length):
+    typedCol.arr[i] = i
+  return typedCol
 
 
 template assertType(c: Column, T: typedesc): TypedCol[T] =

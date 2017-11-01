@@ -62,14 +62,16 @@ def bench_max(dtype, N):
     return ctx.runtime
 
 
-def run_benchmark_repeated(benchmark, label, N, iterations, dtypes):
+def run_benchmark_repeated(benchmark, label, N, iterations, dtypes, result_file):
     print(" *** Benchmark: {}".format(label))
     for dtype in dtypes:
         runtime_sum = 0.0
         runtime_min = None
         runtime_max = None
+        all_runtimes = []
         for i in xrange(iterations):
             runtime = benchmark(dtype, N)
+            all_runtimes.append(runtime)
             runtime_sum += runtime
             if runtime < runtime_min or runtime_min is None:
                 runtime_min = runtime
@@ -82,6 +84,8 @@ def run_benchmark_repeated(benchmark, label, N, iterations, dtypes):
                 dtype.__name__, runtime_min, runtime_avg, runtime_max
             )
         )
+        result_row = [dtype.__name__] + [str(rt) for rt in all_runtimes]
+        result_file.write(";".join(result_row) + "\n")
 
 
 if __name__ == "__main__":
@@ -93,8 +97,17 @@ if __name__ == "__main__":
 
     dtypes = [np.int16, np.int32, np.int64, np.float32, np.float64]
 
-    run_benchmark_repeated(bench_zeros, "zeros", N, 100, dtypes)
-    run_benchmark_repeated(bench_ones, "ones", N, 100, dtypes)
-    run_benchmark_repeated(bench_range, "range", N, 100, dtypes)
-    run_benchmark_repeated(bench_sum, "sum", N, 100, dtypes)
-    run_benchmark_repeated(bench_max, "max", N, 100, dtypes)
+    benchmarks = [
+        (bench_zeros, "zeros"),
+        (bench_ones, "ones"),
+        (bench_range, "range"),
+        (bench_sum, "sum"),
+        (bench_max, "max"),
+    ]
+
+    for benchmark, label in benchmarks:
+        filename = "results/result_{}_pandas_{}.csv".format(N, label)
+        with open(filename, "w") as result_file:
+            run_benchmark_repeated(
+                benchmark, label, N, 100, dtypes, result_file
+            )
