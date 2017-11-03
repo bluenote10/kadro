@@ -10,7 +10,7 @@ import macros
 
 import ../src/columns
 
-import arraymancer
+# import arraymancer
 
 type
   Benchmark = object
@@ -45,7 +45,7 @@ proc benchmarkOnes[T](N: int): float =
 
 proc benchmarkRange[T](N: int): float =
   let runTime = runTimed:
-    let col {.used.} = range[T](N)
+    let col {.used.} = arange[T](N)
   runTime
 
 proc benchmarkSum[T](N: int): float =
@@ -94,7 +94,7 @@ macro makeArrayOverTypes(name: untyped): untyped =
       newNimNode(nnkBracketExpr).add(name, typeName),
       newStrLitNode($typeName)
     ))
-  echo "result: ", result.repr
+  # echo "result: ", result.repr
 
 proc runAllBenchmarks(label: string, N: int, benchmarks: openarray[Benchmark]) =
   echo fmt" *** Benchmark: $label"
@@ -116,9 +116,9 @@ proc main() =
   if selection.isNil or selection == "zeros":
     runAllBenchmarks("zeros", N, makeArrayOverTypes(benchmarkZeros))
   if selection.isNil or selection == "ones":
-    runAllBenchmarks("ones", N, makeArrayOverTypes(benchmarkZeros))
+    runAllBenchmarks("ones", N, makeArrayOverTypes(benchmarkOnes))
   if selection.isNil or selection == "range":
-    runAllBenchmarks("range", N, makeArrayOverTypes(benchmarkZeros))
+    runAllBenchmarks("range", N, makeArrayOverTypes(benchmarkRange))
   if selection.isNil or selection == "sum":
     runAllBenchmarks("sum", N, makeArrayOverTypes(benchmarkSum))
   if selection.isNil or selection == "max":

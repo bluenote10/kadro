@@ -10,6 +10,12 @@ import tensor.backend.openmp
 proc high(T: typedesc[SomeReal]): T {.used.} = Inf
 proc low(T: typedesc[SomeReal]): T {.used.} = NegInf
 
+type
+  Impl {.pure.} = enum
+    Standard, OpenMP, Arraymancer
+
+const impl = Impl.Standard
+
 # -----------------------------------------------------------------------------
 # Main typedefs
 # -----------------------------------------------------------------------------
@@ -46,28 +52,34 @@ proc newCol*[T](s: seq[T]): Column =
 proc zeros*[T](length: int): Column =
   let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
   typedCol.arr.setLen(length)
-  #for i in 0 ..< length:
-  #  typedCol.arr[i] = T(0)
-  omp_parallel_countup(i, length):
-    typedCol.arr[i] = T(0)
+  when impl == Impl.Standard:
+    for i in 0 ..< length:
+      typedCol.arr[i] = T(0)
+  elif impl == Impl.OpenMP:
+    omp_parallel_countup(i, length):
+      typedCol.arr[i] = T(0)
   return typedCol
 
 proc ones*[T](length: int): Column =
   let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
   typedCol.arr.setLen(length)
-  #for i in 0 ..< length:
-  #  typedCol.arr[i] = T(0)
-  omp_parallel_countup(i, length):
-    typedCol.arr[i] = T(1)
+  when impl == Impl.Standard:
+    for i in 0 ..< length:
+      typedCol.arr[i] = T(1)
+  elif impl == Impl.OpenMP:
+    omp_parallel_countup(i, length):
+      typedCol.arr[i] = T(1)
   return typedCol
 
-proc range*[T](length: int): Column =
+proc arange*[T](length: int): Column =
   let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
   typedCol.arr.setLen(length)
-  #for i in 0 ..< length:
-  #  typedCol.arr[i] = T(0)
-  omp_parallel_countup(i, length):
-    typedCol.arr[i] = i
+  when impl == Impl.Standard:
+    for i in 0 ..< length:
+      typedCol.arr[i] = T(i)
+  elif impl == Impl.OpenMP:
+    omp_parallel_countup(i, length):
+      typedCol.arr[i] = T(i)
   return typedCol
 
 
