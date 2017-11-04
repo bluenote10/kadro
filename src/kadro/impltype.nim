@@ -6,6 +6,7 @@ type
   ImplFeature* {.pure.} = enum
     OpenMP, Simd
 
+# TODO infer from 'defined'
 proc getImpl*(): Impl = Impl.Standard
 
 proc getImplFeatures*(): set[ImplFeature] =

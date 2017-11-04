@@ -8,75 +8,57 @@ const implFeatures = getImplFeatures()
 when impl == Impl.Standard:
 
   proc toColumn*[T](s: seq[T]): Column =
-    return TypedCol[T](arr: s)
+    return TypedCol[T](data: s)
 
   proc zeros*[T](length: int): Column =
-    let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-    typedCol.arr.setLen(length)
-    when impl == Impl.Standard:
+    let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
+    typedCol.data.setLen(length)
+    when ImplFeature.OpenMP notin implFeatures:
       for i in 0 ..< length:
-        typedCol.arr[i] = T(0)
-    elif impl == Impl.OpenMP:
+        typedCol.data[i] = T(0)
+    else:
       omp_parallel_countup(i, length):
-        typedCol.arr[i] = T(0)
+        typedCol.data[i] = T(0)
     return typedCol
 
   proc ones*[T](length: int): Column =
-    let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-    typedCol.arr.setLen(length)
-    when impl == Impl.Standard:
+    let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
+    typedCol.data.setLen(length)
+    when ImplFeature.OpenMP notin implFeatures:
       for i in 0 ..< length:
-        typedCol.arr[i] = T(1)
-    elif impl == Impl.OpenMP:
+        typedCol.data[i] = T(1)
+    else:
       omp_parallel_countup(i, length):
-        typedCol.arr[i] = T(1)
+        typedCol.data[i] = T(1)
     return typedCol
 
   proc arange*[T](length: int): Column =
-    let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-    typedCol.arr.setLen(length)
-    when impl == Impl.Standard:
+    let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
+    typedCol.data.setLen(length)
+    when ImplFeature.OpenMP notin implFeatures:
       for i in 0 ..< length:
-        typedCol.arr[i] = T(i)
-    elif impl == Impl.OpenMP:
+        typedCol.data[i] = T(i)
+    else:
       omp_parallel_countup(i, length):
-        typedCol.arr[i] = T(i)
+        typedCol.data[i] = T(i)
     return typedCol
 
 elif impl == Impl.Arraymancer:
 
+  import arraymancer
+  import sequtils
+
   proc toColumn*[T](s: seq[T]): Column =
-    return TypedCol[T](arr: s)
+    TypedCol[T](data: s.toTensor)
 
   proc zeros*[T](length: int): Column =
-    let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-    typedCol.arr.setLen(length)
-    when impl == Impl.Standard:
-      for i in 0 ..< length:
-        typedCol.arr[i] = T(0)
-    elif impl == Impl.OpenMP:
-      omp_parallel_countup(i, length):
-        typedCol.arr[i] = T(0)
-    return typedCol
+    TypedCol[T](data: arraymancer.zeros[T](length))
 
   proc ones*[T](length: int): Column =
-    let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-    typedCol.arr.setLen(length)
-    when impl == Impl.Standard:
-      for i in 0 ..< length:
-        typedCol.arr[i] = T(1)
-    elif impl == Impl.OpenMP:
-      omp_parallel_countup(i, length):
-        typedCol.arr[i] = T(1)
-    return typedCol
-
+    TypedCol[T](data: arraymancer.ones[T](length))
+    
   proc arange*[T](length: int): Column =
-    let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-    typedCol.arr.setLen(length)
-    when impl == Impl.Standard:
-      for i in 0 ..< length:
-        typedCol.arr[i] = T(i)
-    elif impl == Impl.OpenMP:
-      omp_parallel_countup(i, length):
-        typedCol.arr[i] = T(i)
-    return typedCol
+    # FIXME: arraymancer doesn't have a range?
+    let data = toSeq(0 ..< length).toTensor
+    let typedCol = TypedCol[T](data: data)
+    typedCol

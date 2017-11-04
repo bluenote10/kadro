@@ -29,16 +29,16 @@ type
 
   TypedCol*[T] = ref object of Column
     when impl == Impl.Standard:
-      arr*: seq[T]
+      data*: seq[T]
     elif impl == Impl.Arraymancer:
-      data: Tensor[T]
+      data*: Tensor[T]
 
 method `$`*(c: Column): string {.base.} =
   raise newException(AssertionError, "`$` of base method should not be called.")
 
 method `$`*[T](c: TypedCol[T]): string =
   let typeName = name(T)
-  result = "TypedCol[" & typeName & "](" & $c.arr & ")"
+  result = "TypedCol[" & typeName & "](" & $c.data & ")"
 
 method `typeName`*(c: Column): string {.base.} =
   raise newException(AssertionError, "`typeName` of base method should not be called.")
@@ -50,7 +50,10 @@ method `len`*(c: Column): int {.base.} =
   raise newException(AssertionError, "`len` of base method should not be called.")
 
 method `len`*[T](c: TypedCol[T]): int =
-  result = c.arr.len
+  when impl == Impl.Standard:
+    result = c.data.len
+  elif impl == Impl.Arraymancer:
+    result = c.data.shape[0]
 
 
 template assertType*(c: Column, T: typedesc): TypedCol[T] =
@@ -126,7 +129,7 @@ template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
 
 proc sum*[T](c: TypedCol[T]): float =
   var sum = 0.0
-  for x in c.arr:
+  for x in c.data:
     sum += x.float
   return sum
 
@@ -160,7 +163,7 @@ proc mean*[T](c: TypedCol[T]): float =
 proc mean*(c: Column): float =
   c.sum() / c.len.float
 
-proc max*[T](c: TypedCol[T]): T =
+proc maxNaive*[T](c: TypedCol[T]): T =
   if c.len == 0:
     return T(0)
   else:
@@ -170,30 +173,33 @@ proc max*[T](c: TypedCol[T]): T =
         curMax = c.arr[i]
     return curMax
 
-proc maxAlternative*[T](c: TypedCol[T]): T =
-  ## Optimized implementation. Seems to be faster for larger types (64 bit)
-  ## but slower for smaller types (16 bit)
-  if c.len == 0:
-    return low(T)
-  else:
-    var curMax = low(T)
-    var i = 0
-    let nTwoAligned = (c.len shr 1 shl 1)
-    while i < nTwoAligned:
-      let localMax = if c.arr[i] > c.arr[i+1]: c.arr[i] else: c.arr[i+1]
-      if localMax > curMax:
-        curMax = localMax
-      i += 2
-    if i < c.len - 1:
-      if c.arr[^1] > curMax:
-        curMax = c.arr[^1]
-    return curMax
+proc max*[T](c: TypedCol[T]): T =
+  when impl == Impl.Standard:
+    # Optimized implementation. Seems to be faster for larger types (64 bit)
+    # but slower for smaller types (16 bit)
+    if c.len == 0:
+      return low(T)
+    else:
+      var curMax = low(T)
+      var i = 0
+      let nTwoAligned = (c.len shr 1 shl 1)
+      while i < nTwoAligned:
+        let localMax = if c.data[i] > c.data[i+1]: c.data[i] else: c.data[i+1]
+        if localMax > curMax:
+          curMax = localMax
+        i += 2
+      if i < c.len - 1:
+        if c.data[^1] > curMax:
+          curMax = c.data[^1]
+      return curMax
+  elif impl == Impl.Arraymancer:
+    return c.data.max()
 
 proc max*(c: Column, T: typedesc): T =
   let cTyped = c.assertType(T)
-  return cTyped.maxAlternative()
+  return cTyped.max()
 
 proc max*(c: Column): float =
   defaultImpls(c, cTyped):
-    return cTyped.maxAlternative().float
+    return cTyped.max().float
   raise newException(ValueError, "max not implemented for type: " & c.typeName())
