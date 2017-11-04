@@ -19,27 +19,31 @@ suite "constructors":
 
   test("toColumn"):
     let c = @[1, 2, 3].toColumn
+    check c.toSeq == @[1, 2, 3]
 
   test("zeros"):
-    let c = zeros[int](10)
+    let c = zeros[int](5)
+    check c.toSeq == @[0, 0, 0, 0, 0]
     
   test("ones"):
-    let c = ones[int](10)
-
+    let c = ones[int](5)
+    check c.toSeq == @[1, 1, 1, 1, 1]
+    
   test("arange"):
-    let c = arange[int](10)
-
+    let c = arange[int](5)
+    check c.toSeq == @[0, 1, 2, 3, 4]
+    
 
 suite "iterators":
 
-  test "items":
+  test("items"):
     let c = @[1, 2, 3].toColumn
     var expected = 1
     for x in c:
       check x == expected
       expected.inc
       
-  test "enumerate":
+  test("enumerate"):
     let c = @[1, 2, 3].toColumn
     var expected = 1
     for i, x in c.enumerate:
@@ -48,4 +52,18 @@ suite "iterators":
       expected.inc
     
 
-      
+suite "aggregations":
+
+  test("sum"):
+    let c = @[1, 2, 3].toColumn
+    check c.sum() == 6
+    
+  test("mean"):
+    let c = @[1, 2, 3].toColumn
+    check c.mean() == 2
+    check c.toTypeless.mean() == 2
+
+  test("max"):
+    let c = @[2, 3, 1].toColumn
+    # FIXME: Seems to trigger a Nim bug now.
+    #check c.max() == 3

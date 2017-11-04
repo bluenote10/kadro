@@ -116,6 +116,11 @@ template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
   elif c of TypedCol[int64]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int64)
     procBody
+  # FIXME: Do we really need an implementation for int or can we generically
+  # apply some casts to any of the other types?
+  elif c of TypedCol[int]:
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(int64)
+    procBody 
   elif c of TypedCol[float32]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(float32)
     procBody
@@ -168,24 +173,31 @@ proc toTensor*(c: Column, T: typedesc): Tensor[T] =
 # Aggregations
 # -----------------------------------------------------------------------------
 
-proc sum*[T](c: TypedCol[T]): float =
-  var sum = 0.0
+#[
+# FIXME: Why doesn't this work with a typedesc?
+proc sum*[T](c: TypedCol[T], R: typedesc): R =
+  var sum: R = 0
   for x in c.data:
-    sum += x.float
+    sum += R(x) # typedesc can't be used as type conversion?
+  return sum
+]#
+
+proc sumGeneric*[T, R](c: TypedCol[T]): R =
+  ## Most generic implementation of a sum, where the result type is generic
+  ## as well.
+  # FIXME: Why can I not call it `sum`?
+  var sum = R(0)
+  for x in c.data:
+    sum += R(x)
   return sum
 
-proc sumExplicit(c: Column): float =
-  if c of TypedCol[int]:
-    let cTyped = c.assertType(int)
-    return cTyped.sum()
-  elif c of TypedCol[float32]:
-    let cTyped = c.assertType(float32)
-    return cTyped.sum()
-  elif c of TypedCol[float64]:
-    let cTyped = c.assertType(float64)
-    return cTyped.sum()
-  else:
-    raise newException(ValueError, "sum not implemented for type: " & c.typeName())
+proc sum*[T](c: TypedCol[T]): float =
+  when impl == Impl.Standard:
+    # c.sum(float)
+    sumGeneric[T, float](c)
+  elif impl == Impl.Arraymancer:
+    # FIXME: How to deal with overflows?
+    c.data.sum().float
 
 #[
 proc sum*(c: Column): float =
@@ -197,9 +209,6 @@ proc sum*(c: Column): float =
   defaultImpls(c, cTyped):
     return cTyped.sum()
   raise newException(ValueError, "sum not implemented for type: " & c.typeName())
-
-proc mean*[T](c: TypedCol[T]): float =
-  c.sum() / c.len.float
 
 proc mean*(c: Column): float =
   c.sum() / c.len.float
