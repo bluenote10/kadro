@@ -4,29 +4,16 @@ import strutils
 import typetraits
 import macros
 # import threadpool
-
 import tensor.backend.openmp
+
+import impltype
 
 # TODO: remove after PR merge + next release
 proc high(T: typedesc[SomeReal]): T {.used.} = Inf
 proc low(T: typedesc[SomeReal]): T {.used.} = NegInf
 
-type
-  Impl {.pure.} = enum
-    Standard, Arraymancer
-
-  ImplFeature {.pure.} = enum
-    OpenMP, Simd
-
-proc getImplFeatures(): set[ImplFeature] =
-  result = {}
-  when defined(openmp):
-    result.incl(ImplFeature.OpenMP)
-  when defined(simd):
-    result.incl(ImplFeature.Simd)
-
-const impl = Impl.Standard
-const implFeature = getImplFeatures()
+const impl = getImpl()
+const implFeatures = getImplFeatures()
 
 # Would be nice to make the import conditional, but nimsuggest doesn't like it.
 import arraymancer
@@ -64,43 +51,6 @@ method `len`*(c: Column): int {.base.} =
 
 method `len`*[T](c: TypedCol[T]): int =
   result = c.arr.len
-
-
-proc newCol*[T](s: seq[T]): Column =
-  return TypedCol[T](arr: s)
-
-proc zeros*[T](length: int): Column =
-  let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-  typedCol.arr.setLen(length)
-  when impl == Impl.Standard:
-    for i in 0 ..< length:
-      typedCol.arr[i] = T(0)
-  elif impl == Impl.OpenMP:
-    omp_parallel_countup(i, length):
-      typedCol.arr[i] = T(0)
-  return typedCol
-
-proc ones*[T](length: int): Column =
-  let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-  typedCol.arr.setLen(length)
-  when impl == Impl.Standard:
-    for i in 0 ..< length:
-      typedCol.arr[i] = T(1)
-  elif impl == Impl.OpenMP:
-    omp_parallel_countup(i, length):
-      typedCol.arr[i] = T(1)
-  return typedCol
-
-proc arange*[T](length: int): Column =
-  let typedCol = TypedCol[T](arr: newSeqOfCap[T](length))
-  typedCol.arr.setLen(length)
-  when impl == Impl.Standard:
-    for i in 0 ..< length:
-      typedCol.arr[i] = T(i)
-  elif impl == Impl.OpenMP:
-    omp_parallel_countup(i, length):
-      typedCol.arr[i] = T(i)
-  return typedCol
 
 
 template assertType*(c: Column, T: typedesc): TypedCol[T] =

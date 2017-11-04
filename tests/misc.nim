@@ -8,9 +8,9 @@ suite "misc":
     proc genDynamicCol(s: string): Column =
       case s
       of "string":
-        return newCol(@["1", "2", "3"])
+        return @["1", "2", "3"].toColumn()
       of "int":
-        return newCol(@[1, 2, 3])
+        return @[1, 2, 3].toColumn()
 
     proc operateOnCol(c: Column) =
       if c of TypedCol[string]:
