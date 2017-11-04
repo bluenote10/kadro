@@ -7,10 +7,10 @@ const implFeatures = getImplFeatures()
 
 when impl == Impl.Standard:
 
-  proc toColumn*[T](s: seq[T]): Column =
+  proc toColumn*[T](s: seq[T]): TypedCol[T] =
     return TypedCol[T](data: s)
 
-  proc zeros*[T](length: int): Column =
+  proc zeros*[T](length: int): TypedCol[T] =
     let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
     typedCol.data.setLen(length)
     when ImplFeature.OpenMP notin implFeatures:
@@ -21,7 +21,7 @@ when impl == Impl.Standard:
         typedCol.data[i] = T(0)
     return typedCol
 
-  proc ones*[T](length: int): Column =
+  proc ones*[T](length: int): TypedCol[T] =
     let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
     typedCol.data.setLen(length)
     when ImplFeature.OpenMP notin implFeatures:
@@ -32,7 +32,7 @@ when impl == Impl.Standard:
         typedCol.data[i] = T(1)
     return typedCol
 
-  proc arange*[T](length: int): Column =
+  proc arange*[T](length: int): TypedCol[T] =
     let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
     typedCol.data.setLen(length)
     when ImplFeature.OpenMP notin implFeatures:
@@ -48,17 +48,17 @@ elif impl == Impl.Arraymancer:
   import arraymancer
   import sequtils
 
-  proc toColumn*[T](s: seq[T]): Column =
+  proc toColumn*[T](s: seq[T]): TypedCol[T] =
     TypedCol[T](data: s.toTensor)
 
-  proc zeros*[T](length: int): Column =
+  proc zeros*[T](length: int): TypedCol[T] =
     TypedCol[T](data: arraymancer.zeros[T](length))
 
-  proc ones*[T](length: int): Column =
+  proc ones*[T](length: int): TypedCol[T] =
     TypedCol[T](data: arraymancer.ones[T](length))
     
-  proc arange*[T](length: int): Column =
+  proc arange*[T](length: int): TypedCol[T] =
     # FIXME: arraymancer doesn't have a range?
-    let data = toSeq(0 ..< length).toTensor
+    let data = arraymancer.toTensor(sequtils.toSeq(0 ..< length))
     let typedCol = TypedCol[T](data: data)
     typedCol

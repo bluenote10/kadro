@@ -17,6 +17,7 @@ const implFeatures = getImplFeatures()
 
 # Would be nice to make the import conditional, but nimsuggest doesn't like it.
 import arraymancer
+import tensor.accessors
 when impl == Impl.Arraymancer:
   import arraymancer
 
@@ -122,6 +123,46 @@ template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
     let `cTyped` {.inject.} = c.assertTypeUnsafe(float64)
     procBody
 
+# -----------------------------------------------------------------------------
+# Iterators
+# -----------------------------------------------------------------------------
+
+iterator items*[T](c: TypedCol[T]): T =
+  for x in items(c.data):
+    yield x
+
+iterator enumerate*[T](c: TypedCol[T]): (int, T) =
+  var i = 0
+  for x in items(c.data):
+    yield (i, x)
+    inc i
+
+# -----------------------------------------------------------------------------
+# Conversion
+# -----------------------------------------------------------------------------
+
+proc toTypeless*[T](c: TypedCol[T]): Column = c
+    ## Converts a typed column into an untyped column, which can obviously 
+    ## be auto-casted anyway. The function only exists as a syntactical
+    ## convenience internally for unit tests.
+
+proc toSeq*[T](c: TypedCol[T]): seq[T] =
+  when impl == Impl.Standard:
+    c.data
+  else:
+    c.data.toRawSeq
+
+proc toSeq*(c: Column, T: typedesc): seq[T] =
+  c.assertType(T).toSeq()
+
+proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
+  when impl == Impl.Standard:
+    c.data.toTensor
+  else:
+    c.data
+
+proc toTensor*(c: Column, T: typedesc): Tensor[T] =
+  c.assertType(T).toTensor()
 
 # -----------------------------------------------------------------------------
 # Aggregations
