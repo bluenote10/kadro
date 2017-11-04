@@ -7,14 +7,31 @@ import macros
 
 import tensor.backend.openmp
 
+# TODO: remove after PR merge + next release
 proc high(T: typedesc[SomeReal]): T {.used.} = Inf
 proc low(T: typedesc[SomeReal]): T {.used.} = NegInf
 
 type
   Impl {.pure.} = enum
-    Standard, OpenMP, Arraymancer
+    Standard, Arraymancer
+
+  ImplFeature {.pure.} = enum
+    OpenMP, Simd
+
+proc getImplFeatures(): set[ImplFeature] =
+  result = {}
+  when defined(openmp):
+    result.incl(ImplFeature.OpenMP)
+  when defined(simd):
+    result.incl(ImplFeature.Simd)
 
 const impl = Impl.Standard
+const implFeature = getImplFeatures()
+
+# Would be nice to make the import conditional, but nimsuggest doesn't like it.
+import arraymancer
+when impl == Impl.Arraymancer:
+  import arraymancer
 
 # -----------------------------------------------------------------------------
 # Main typedefs
@@ -24,7 +41,10 @@ type
   Column* = ref object of RootObj
 
   TypedCol*[T] = ref object of Column
-    arr*: seq[T]
+    when impl == Impl.Standard:
+      arr*: seq[T]
+    elif impl == Impl.Arraymancer:
+      data: Tensor[T]
 
 method `$`*(c: Column): string {.base.} =
   raise newException(AssertionError, "`$` of base method should not be called.")
@@ -83,7 +103,7 @@ proc arange*[T](length: int): Column =
   return typedCol
 
 
-template assertType(c: Column, T: typedesc): TypedCol[T] =
+template assertType*(c: Column, T: typedesc): TypedCol[T] =
   if not (c of TypedCol[T]):
     let pos = instantiationInfo()
     let msg = "Expected column of type [$1], got [$2] at $3:$4" % [
@@ -96,10 +116,10 @@ template assertType(c: Column, T: typedesc): TypedCol[T] =
     raise newException(ValueError, msg)
   cast[TypedCol[T]](c)
 
-template assertTypeUnsafe(c: Column, T: typedesc): TypedCol[T] =
+template assertTypeUnsafe*(c: Column, T: typedesc): TypedCol[T] =
   cast[TypedCol[T]](c)
 
-template toTyped(newCol: untyped, c: Column, T: typedesc): untyped =
+template toTyped*(newCol: untyped, c: Column, T: typedesc): untyped =
   ## Alternative to assertType.
   ## Pro: - The user doesn't have to decide between let or var.
   ## Con: - Doesn't emphasize that there is an assertion.
@@ -227,42 +247,3 @@ proc max*(c: Column): float =
   defaultImpls(c, cTyped):
     return cTyped.maxAlternative().float
   raise newException(ValueError, "max not implemented for type: " & c.typeName())
-
-
-when isMainModule:
-  proc genDynamicCol(s: string): Column =
-    case s
-    of "string":
-      return newCol(@["1", "2", "3"])
-    of "int":
-      return newCol(@[1, 2, 3])
-
-  proc operateOnCol(c: Column) =
-    if c of TypedCol[string]:
-      let cTyped = cast[TypedCol[string]](c)
-      echo "string column": cTyped.arr
-    elif c of TypedCol[int]:
-      let cTyped = cast[TypedCol[int]](c)
-      echo "int column": cTyped.arr
-    else:
-      echo "can't match type"
-
-  let c1 = genDynamicCol("string")
-  let c2 = genDynamicCol("int")
-
-  echo c1
-  echo c2
-  operateOnCol(c1)
-  operateOnCol(c2)
-
-  block:  # block allows to re-use variable names
-    let c1 = c1.assertType(string)
-    let c2 = c2.assertType(int)
-    echo c1.arr
-    echo c2.arr
-
-  block:  # block allows to re-use variable names
-    toTyped(c1, c1, string)
-    toTyped(c2, c2, int)
-    echo c1.arr
-    echo c2.arr

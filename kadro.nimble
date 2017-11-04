@@ -13,7 +13,7 @@ requires "nim >= 0.17.1"
 requires "arraymancer#head"
 
 task test, "Runs unit tests":
-  exec "nim c -r tests/tester.nim"
+  exec "nim c -r tests/misc.nim"
 
 task benchmark, "Runs benchmark":
   cd "benchmarks"
