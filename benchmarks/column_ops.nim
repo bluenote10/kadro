@@ -8,7 +8,7 @@ import typetraits
 import future
 import macros
 
-import ../src/columns
+import kadro
 
 # import arraymancer
 

@@ -14,6 +14,7 @@ requires "arraymancer#head"
 
 task test, "Runs unit tests":
   exec "nim c -r tests/misc.nim"
+  exec "nim c -r tests/tester.nim"
 
 task benchmark, "Runs benchmark":
   cd "benchmarks"

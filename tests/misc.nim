@@ -15,10 +15,10 @@ suite "misc":
     proc operateOnCol(c: Column) =
       if c of TypedCol[string]:
         let cTyped = cast[TypedCol[string]](c)
-        echo "string column": cTyped.arr
+        echo "string column": cTyped.data
       elif c of TypedCol[int]:
         let cTyped = cast[TypedCol[int]](c)
-        echo "int column": cTyped.arr
+        echo "int column": cTyped.data
       else:
         echo "can't match type"
 
@@ -33,11 +33,11 @@ suite "misc":
     block:  # block allows to re-use variable names
       let c1 = c1.assertType(string)
       let c2 = c2.assertType(int)
-      echo c1.arr
-      echo c2.arr
+      echo c1.data
+      echo c2.data
 
     block:  # block allows to re-use variable names
       toTyped(c1, c1, string)
       toTyped(c2, c2, int)
-      echo c1.arr
-      echo c2.arr
+      echo c1.data
+      echo c2.data

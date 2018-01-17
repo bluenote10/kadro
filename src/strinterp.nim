@@ -92,7 +92,7 @@ proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scien
     value = v.BiggestFloat / pow(2f, divisor.float*10f).BiggestFloat
   else:
     value = v.BiggestFloat / pow(1000f, -divisor.float).BiggestFloat
-  let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
+  let f = if scientific: ffScientific else: (if prec == 0: ffDefault else: ffDecimal)
   if len > 0 and value < 0 and fill == '0':
     result = "-" & formatString(formatBiggestFloat(-value, f, prec, sep), len-1, fill)
   else:

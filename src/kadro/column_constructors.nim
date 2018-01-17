@@ -7,15 +7,19 @@ const implFeatures = getImplFeatures()
 
 when impl == Impl.Standard:
 
-  proc toColumn*[T](s: seq[T]): TypedCol[T] =
-    return TypedCol[T](data: s)
+  proc toColumn*[T](s: openarray[T]): TypedCol[T] =
+    when s is seq:
+      return TypedCol[T](data: s)
+    else:
+      return TypedCol[T](data: @s)
 
   proc zeros*[T](length: int): TypedCol[T] =
     let typedCol = TypedCol[T](data: newSeqOfCap[T](length))
     typedCol.data.setLen(length)
     when ImplFeature.OpenMP notin implFeatures:
-      for i in 0 ..< length:
-        typedCol.data[i] = T(0)
+      #for i in 0 ..< length:
+      #  typedCol.data[i] = T(0)
+      zeroMem(typedCol.data[0].addr, length * sizeOf(T))
     else:
       omp_parallel_countup(i, length):
         typedCol.data[i] = T(0)
@@ -56,9 +60,14 @@ elif impl == Impl.Arraymancer:
 
   proc ones*[T](length: int): TypedCol[T] =
     TypedCol[T](data: arraymancer.ones[T](length))
-    
+
   proc arange*[T](length: int): TypedCol[T] =
     # FIXME: arraymancer doesn't have a range?
     let data = arraymancer.toTensor(sequtils.toSeq(0 ..< length))
     let typedCol = TypedCol[T](data: data)
     typedCol
+
+
+when isMainModule:
+  block:
+    let x {.used.} = zeros[int](10)
