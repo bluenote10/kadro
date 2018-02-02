@@ -42,3 +42,33 @@ proc len*(df: DataFrame): int {.inline.} =
       result = df.columns[key].len
       break
 
+
+proc toCsv*(df: DataFrame, filename: string, sep: char = ';') =
+  ## Store the data frame in a CSV
+  var file = open(filename, fmWrite)
+  defer: file.close()
+
+  var j = 0
+  for col in df.columns.keys.pairs:
+    if j > 0:
+      file.write(sep)
+    file.write(col)
+    j += 1
+  file.write("\n")
+
+  #[
+  for j, col in df.columns.keys.pairs:
+    if j > 0:
+      file.write(sep)
+    file.write(col)
+  file.write("\n")
+  ]#
+
+  #[
+  for i in 0 ..< df.len:
+    for j, values in df.columns.values.pairs:
+      if j > 0:
+        file.write(sep)
+      file.write(values.data[i])
+    file.write("\n")
+  ]#
