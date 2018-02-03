@@ -41,20 +41,41 @@ method `$`*[T](c: TypedCol[T]): string =
   let typeName = name(T)
   result = "TypedCol[" & typeName & "](" & $c.data & ")"
 
-method `typeName`*(c: Column): string {.base.} =
+method typeName*(c: Column): string {.base.} =
   raise newException(AssertionError, "`typeName` of base method should not be called.")
 
-method `typeName`*[T](c: TypedCol[T]): string =
+method typeName*[T](c: TypedCol[T]): string =
   result = name(T)
 
-method `len`*(c: Column): int {.base.} =
+method len*(c: Column): int {.base.} =
   raise newException(AssertionError, "`len` of base method should not be called.")
 
-method `len`*[T](c: TypedCol[T]): int =
+method len*[T](c: TypedCol[T]): int =
   when impl == Impl.Standard:
     result = c.data.len
   elif impl == Impl.Arraymancer:
     result = c.data.shape[0]
+
+#[
+method get*(c: Column, i: int, T: typedesc) {.base.} =
+  raise newException(AssertionError, "`get` of base method should not be called.")
+
+method get*[U, T](c: TypedCol[U], i: int): T =
+  T(c.data[i])
+]#
+
+proc get*(c: Column, i: int, T: typedesc): T =
+  if c of TypedCol[T]:
+    result = cast[TypedCol[T]](c).data[i]
+  else:
+    raise newException(ValueError, "Column is not of type " & name(T))
+
+
+method getString*(c: Column, i: int): string {.base.} =
+  raise newException(AssertionError, "`get` of base method should not be called.")
+
+method getString*[T](c: TypedCol[T], i: int): string =
+  $c.data[i]
 
 
 template assertType*(c: Column, T: typedesc): TypedCol[T] =
@@ -120,7 +141,7 @@ template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
   # apply some casts to any of the other types?
   elif c of TypedCol[int]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int64)
-    procBody 
+    procBody
   elif c of TypedCol[float32]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(float32)
     procBody
@@ -147,9 +168,9 @@ iterator enumerate*[T](c: TypedCol[T]): (int, T) =
 # -----------------------------------------------------------------------------
 
 proc toTypeless*[T](c: TypedCol[T]): Column = c
-    ## Converts a typed column into an untyped column, which can obviously 
-    ## be auto-casted anyway. The function only exists as a syntactical
-    ## convenience internally for unit tests.
+  ## Converts a typed column into an untyped column, which can obviously
+  ## be auto-casted anyway. The function only exists as a syntactical
+  ## convenience internally for unit tests.
 
 proc toSeq*[T](c: TypedCol[T]): seq[T] =
   when impl == Impl.Standard:

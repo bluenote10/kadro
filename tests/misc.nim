@@ -1,6 +1,7 @@
 import kadro
 import unittest
 
+#[
 suite "misc":
 
   test "misc usage":
@@ -41,3 +42,5 @@ suite "misc":
       toTyped(c2, c2, int)
       echo c1.data
       echo c2.data
+
+]#

@@ -22,7 +22,6 @@ proc newDataFrameImpl(columns: openarray[(string, Column)]): DataFrame =
 
 
 macro newDataFrame*(columns: untyped): DataFrame =
-
   # for table constructors we inject the toTypeless conversion as a convenience,
   # because otherwise Nim's first-element-determines-type is a bit inconvenient.
   if columns.kind == nnkTableConstr:
@@ -31,7 +30,7 @@ macro newDataFrame*(columns: untyped): DataFrame =
       colExpr[1] = newCall(bindSym"toTypeless", colExpr[1])
 
   result = newCall(bindSym"newDataFrameImpl", columns)
-  echo result.repr
+  # echo result.repr
 
 
 proc len*(df: DataFrame): int {.inline.} =
@@ -49,26 +48,19 @@ proc toCsv*(df: DataFrame, filename: string, sep: char = ';') =
   defer: file.close()
 
   var j = 0
-  for col in df.columns.keys.pairs:
+  for col in df.columns.keys: # FIXME: make `df.columns.keys.pairs` work
     if j > 0:
       file.write(sep)
     file.write(col)
     j += 1
   file.write("\n")
 
-  #[
-  for j, col in df.columns.keys.pairs:
-    if j > 0:
-      file.write(sep)
-    file.write(col)
-  file.write("\n")
-  ]#
-
-  #[
   for i in 0 ..< df.len:
-    for j, values in df.columns.values.pairs:
+    var j = 0
+    for col in df.columns.values:
       if j > 0:
         file.write(sep)
-      file.write(values.data[i])
+      #file.write(col.data[i])
+      file.write(col.getString(i))
+      j += 1
     file.write("\n")
-  ]#
