@@ -172,13 +172,15 @@ proc toTypeless*[T](c: TypedCol[T]): Column = c
   ## be auto-casted anyway. The function only exists as a syntactical
   ## convenience internally for unit tests.
 
-proc toSeq*[T](c: TypedCol[T]): seq[T] =
+proc toSequence*[T](c: TypedCol[T]): seq[T] =
+  ## https://github.com/nim-lang/Nim/issues/7322
   when impl == Impl.Standard:
     c.data
   else:
     c.data.toRawSeq
 
-proc toSeq*(c: Column, T: typedesc): seq[T] =
+proc toSequence*(c: Column, T: typedesc): seq[T] =
+  ## https://github.com/nim-lang/Nim/issues/7322
   c.assertType(T).toSeq()
 
 proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
