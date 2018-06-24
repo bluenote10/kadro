@@ -1,8 +1,9 @@
-import future
+import sugar
 import sequtils
 import strutils
 import typetraits
 import macros
+import lenientops
 # import threadpool
 import tensor.backend.openmp
 
@@ -17,7 +18,8 @@ const implFeatures = getImplFeatures()
 
 # Would be nice to make the import conditional, but nimsuggest doesn't like it.
 import arraymancer
-import tensor.accessors
+#import tensor.higher_order_applymap
+#import tensor.accessors
 when impl == Impl.Arraymancer:
   import arraymancer
 
@@ -33,6 +35,13 @@ type
       data*: seq[T]
     elif impl == Impl.Arraymancer:
       data*: Tensor[T]
+
+proc newTypedCol*[T](size: int): TypedCol[T] =
+  # TODO add unitialized variants
+  when impl == Impl.Standard:
+    TypedCol[T](data: newSeq[T](size))
+  elif impl == Impl.Arraymancer:
+    TypedCol[T](data: zeros[T](size))
 
 method `$`*(c: Column): string {.base.} =
   raise newException(AssertionError, "`$` of base method should not be called.")
@@ -140,7 +149,7 @@ template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
   # FIXME: Do we really need an implementation for int or can we generically
   # apply some casts to any of the other types?
   elif c of TypedCol[int]:
-    let `cTyped` {.inject.} = c.assertTypeUnsafe(int64)
+    let `cTyped` {.inject.} = c.assertTypeUnsafe(int)
     procBody
   elif c of TypedCol[float32]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(float32)
@@ -181,7 +190,7 @@ proc toSequence*[T](c: TypedCol[T]): seq[T] =
 
 proc toSequence*(c: Column, T: typedesc): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
-  c.assertType(T).toSeq()
+  c.assertType(T).toSequence()
 
 proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
   when impl == Impl.Standard:
@@ -276,3 +285,23 @@ proc max*(c: Column): float =
   defaultImpls(c, cTyped):
     return cTyped.max().float
   raise newException(ValueError, "max not implemented for type: " & c.typeName())
+
+# -----------------------------------------------------------------------------
+# Comparison
+# -----------------------------------------------------------------------------
+
+proc `==`*[T](c: TypedCol[T], scalar: T): TypedCol[bool] =
+  when impl == Impl.Standard:
+    result = newTypedCol[bool](c.len)
+    for i in 0 ..< c.len:
+      result.data[i] = c.data[i] == scalar
+  elif impl == Impl.Arraymancer:
+    result = TypedCol[bool](data: c.data.map_inline(x == scalar))
+
+proc `==`*[T, S](a: TypedCol[T], b: TypedCol[S]): TypedCol[bool] =
+  when impl == Impl.Standard:
+    result = newTypedCol[bool](c.len)
+    for i in 0 ..< c.len:
+      result.data[i] = a.data[i] == b.data[i]
+  elif impl == Impl.Arraymancer:
+    result = TypedCol[bool](data: map2_inline(a.data, b.data, x == y))

@@ -6,8 +6,9 @@ import streams
 import parsecsv
 import strutils
 import tables
-import future
+import sugar
 
+{.experimental: "notnil".}
 
 type
   TypeInfo = object

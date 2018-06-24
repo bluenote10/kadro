@@ -7,7 +7,7 @@ type
     OpenMP, Simd
 
 # TODO infer from 'defined'
-proc getImpl*(): Impl = Impl.Standard
+proc getImpl*(): Impl = Impl.Arraymancer
 
 proc getImplFeatures*(): set[ImplFeature] =
   result = {}
