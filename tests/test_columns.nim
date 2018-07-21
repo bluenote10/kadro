@@ -67,7 +67,7 @@ suite "aggregations":
     let c = @[2, 3, 1].toColumn
     check c.max() == 3
 
-suite "comparison":
+suite "comparison (typed)":
 
   test("== (scalar)"):
     let c = @[1, 2, 3].toColumn
@@ -84,3 +84,11 @@ suite "comparison":
     let a = @[1, 2, 3].toColumn
     let b = @[1.0, 2.0, 3.0].toColumn
     check(not(compiles(a == b)))
+
+
+suite "comparison (untyped)":
+
+  test("== (scalar)"):
+    let c = @[1, 2, 3].toColumn.toTypeless
+    let res = c == 2 # TODO: can we not make it fail with e.g. int8?
+    check res.toSequence == @[false, true, false]

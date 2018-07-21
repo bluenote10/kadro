@@ -73,7 +73,6 @@ template assertType*(c: Column, T: typedesc): TypedCol[T] =
       pos.filename,
       $pos.line,
     ]
-    echo msg
     raise newException(ValueError, msg)
   cast[TypedCol[T]](c)
 
@@ -250,7 +249,7 @@ proc max*(c: Column): float =
   raise newException(ValueError, "max not implemented for type: " & c.typeName())
 
 # -----------------------------------------------------------------------------
-# Comparison
+# Comparison (typed)
 # -----------------------------------------------------------------------------
 
 proc `==`*[T](c: TypedCol[T], scalar: T): TypedCol[bool] =
@@ -262,3 +261,14 @@ proc `==`*[T, S](a: TypedCol[T], b: TypedCol[S]): TypedCol[bool] =
   result = newTypedCol[bool](a.len)
   for i in 0 ..< a.len:
     result.data[i] = a.data[i] == b.data[i]
+
+# -----------------------------------------------------------------------------
+# Comparison (untyped)
+# -----------------------------------------------------------------------------
+
+proc `==`*[T](c: Column, scalar: T): TypedCol[bool] =
+  result = newTypedCol[bool](c.len)
+  let cTyped = c.assertType(T)
+  # TODO: it would be nice if we had a `assertTypeOrConvertableTo(T)`
+  for i in 0 ..< c.len:
+    result.data[i] = cTyped.data[i] == scalar
