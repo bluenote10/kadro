@@ -6,8 +6,11 @@ type
   ImplFeature* {.pure.} = enum
     OpenMP, Simd
 
-# TODO infer from 'defined'
-proc getImpl*(): Impl = Impl.Arraymancer
+proc getImpl*(): Impl =
+  when defined(arraymancer):
+    Impl.Arraymancer
+  else:
+    Impl.Standard
 
 proc getImplFeatures*(): set[ImplFeature] =
   result = {}

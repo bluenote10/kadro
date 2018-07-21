@@ -71,9 +71,16 @@ suite "comparison":
 
   test("== (scalar)"):
     let c = @[1, 2, 3].toColumn
-    echo c == 2
+    let res = c == 2
+    check res.toSequence == @[false, true, false]
 
-  test("=="):
+  test("== (valid types)"):
+    let a = @[1, 2, 3].toColumn
+    let b = @[2, 2, 2].toColumn
+    let res = a == b
+    check res.toSequence == @[false, true, false]
+
+  test("== (invalid types)"):
     let a = @[1, 2, 3].toColumn
     let b = @[1.0, 2.0, 3.0].toColumn
-    echo a == b
+    check(not(compiles(a == b)))
