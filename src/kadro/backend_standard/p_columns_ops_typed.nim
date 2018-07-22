@@ -52,26 +52,17 @@ proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
 # Aggregations
 # -----------------------------------------------------------------------------
 
-#[
-# FIXME: Why doesn't this work with a typedesc?
+# Required because of: https://github.com/nim-lang/Nim/issues/8403
+template dummyConvert[T, R](x: T): R = R(x)
+
 proc sum*[T](c: TypedCol[T], R: typedesc): R =
   var sum: R = 0
   for x in c.data:
-    sum += R(x) # typedesc can't be used as type conversion?
-  return sum
-]#
-
-proc sumGeneric*[T, R](c: TypedCol[T]): R =
-  ## Most generic implementation of a sum, where the result type is generic
-  ## as well.
-  # FIXME: Why can I not call it `sum`?
-  var sum = R(0)
-  for x in c.data:
-    sum += R(x)
+    sum += dummyConvert[T, R](x)
   return sum
 
 proc sum*[T](c: TypedCol[T]): float =
-  sumGeneric[T, float](c)
+  c.sum(float)
 
 proc mean*[T](c: TypedCol[T]): float =
   c.sum() / c.len.float
