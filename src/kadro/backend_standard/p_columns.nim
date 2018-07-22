@@ -15,13 +15,15 @@ import arraymancer # for toTensor
 
 type
   Column* = ref object of RootObj
+    typeInfo*: pointer
 
   TypedCol*[T] = ref object of Column
     data*: seq[T]
 
 proc newTypedCol*[T](size: int): TypedCol[T] =
   # TODO add unitialized variants
-  TypedCol[T](data: newSeq[T](size))
+  var dummy: T
+  TypedCol[T](typeInfo: getTypeInfo(dummy), data: newSeq[T](size))
 
 method `$`*(c: Column): string {.base.} =
   raise newException(AssertionError, "`$` of base method should not be called.")
@@ -152,10 +154,13 @@ iterator enumerate*[T](c: TypedCol[T]): (int, T) =
 # Conversion
 # -----------------------------------------------------------------------------
 
-proc toTypeless*[T](c: TypedCol[T]): Column = c
+proc toTypeless*[T](c: TypedCol[T]): Column =
   ## Converts a typed column into an untyped column, which can obviously
   ## be auto-casted anyway. The function only exists as a syntactical
   ## convenience internally for unit tests.
+  result = c
+  var dummy: T
+  result.typeInfo = getTypeInfo(dummy) # TODO remove hack, TypedCols should always have proper typeInfos
 
 proc toSequence*[T](c: TypedCol[T]): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
@@ -247,6 +252,27 @@ proc max*(c: Column): float =
   defaultImpls(c, cTyped):
     return cTyped.max().float
   raise newException(ValueError, "max not implemented for type: " & c.typeName())
+
+import tables
+
+var registeredSumProcs = initTable[pointer, Column -> float]()
+
+template registerSingleColumnType*(T: typedesc) =
+
+  proc sum*(c: Column): float {.gensym.} =
+    let cTyped = c.assertType(T)
+    cTyped.sum()
+
+  var dummy: T
+  let ti = getTypeInfo(dummy)
+  echo "registering sum2 for typeInfo: ", ti.repr
+  registeredSumProcs[ti] = sum
+
+proc sum2*(c: Column): float =
+  let ti = c.typeInfo
+  echo "called sum2 on column of typeInfo: ", ti.repr
+  let f = registeredSumProcs[ti]
+  f(c)
 
 # -----------------------------------------------------------------------------
 # Comparison (typed)
