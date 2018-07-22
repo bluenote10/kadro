@@ -27,19 +27,9 @@ proc toTensor*(c: Column, T: typedesc): Tensor[T] =
   c.assertType(T).toTensor()
 
 
-#[
-method get*(c: Column, i: int, T: typedesc) {.base.} =
-  raise newException(AssertionError, "`get` of base method should not be called.")
-
-method get*[U, T](c: TypedCol[U], i: int): T =
-  T(c.data[i])
-]#
-
-proc get*(c: Column, i: int, T: typedesc): T =
-  if c of TypedCol[T]:
-    result = cast[TypedCol[T]](c).data[i]
-  else:
-    raise newException(ValueError, "Column is not of type " & name(T))
+# -----------------------------------------------------------------------------
+# Type casts
+# -----------------------------------------------------------------------------
 
 template assertType*(c: Column, T: typedesc): TypedCol[T] =
   if not (c of TypedCol[T]):
@@ -56,13 +46,24 @@ template assertType*(c: Column, T: typedesc): TypedCol[T] =
 template assertTypeUnsafe*(c: Column, T: typedesc): TypedCol[T] =
   cast[TypedCol[T]](c)
 
-template toTyped*(newCol: untyped, c: Column, T: typedesc): untyped =
-  ## Alternative to assertType.
-  ## Pro: - The user doesn't have to decide between let or var.
-  ## Con: - Doesn't emphasize that there is an assertion.
-  if not (c of TypedCol[T]):
-    raise newException(ValueError, "Expected column of type " & name(T))
-  let newCol = cast[TypedCol[T]](c)
+
+# -----------------------------------------------------------------------------
+# Generic getters
+# -----------------------------------------------------------------------------
+
+#[
+method get*(c: Column, i: int, T: typedesc) {.base.} =
+  raise newException(AssertionError, "`get` of base method should not be called.")
+
+method get*[U, T](c: TypedCol[U], i: int): T =
+  T(c.data[i])
+]#
+
+proc get*(c: Column, i: int, T: typedesc): T =
+  if c of TypedCol[T]:
+    result = cast[TypedCol[T]](c).data[i]
+  else:
+    raise newException(ValueError, "Column is not of type " & name(T))
 
 
 # -----------------------------------------------------------------------------
@@ -88,6 +89,7 @@ proc sum*(c: Column): float =
 
 proc mean*(c: Column): float =
   c.sum() / c.len
+
 
 # -----------------------------------------------------------------------------
 # Comparison (untyped)
