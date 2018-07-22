@@ -93,13 +93,3 @@ suite "comparison (untyped)":
     let res = c == 2 # TODO: can we not make it fail with e.g. int8?
     check res.toSequence == @[false, true, false]
 
-
-registerSingleColumnType(int8)
-registerSingleColumnType(float)
-
-let c = @[1i8, 2, 3].toColumn.toTypeless
-echo c.sum2()
-
-block:
-  let c = @[1.0, 2, 3, 4].toColumn.toTypeless
-  echo c.sum2()
