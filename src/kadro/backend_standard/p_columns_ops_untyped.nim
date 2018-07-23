@@ -84,6 +84,28 @@ proc sum*(c: Column): float =
   f(c)
 
 
+var registeredMaxProcs = initTable[(pointer, pointer), pointer]()
+
+template registerColumnPairType*(T: typedesc, R: typedesc) =
+  # Uses the trick from: https://forum.nim-lang.org/t/3267
+  let tiCol = getTypeInfo(T)
+  let tiRes = getTypeInfo(R)
+  echo "registering column pair ops for typeInfo: T = ", tiCol.repr[0..^2], " T = ", tiRes.repr[0..^2]
+
+  proc max_impl(c: Column): R {.gensym.} =
+    type RR = R
+    let cTyped = c.assertType(T)
+    RR(cTyped.max())
+
+  registeredMaxProcs[(tiCol, tiRes)] = cast[pointer](max_impl)
+
+proc max*(c: Column, R: typedesc): R =
+  let tiCol = c.typeInfo
+  let tiRes = getTypeInfo(R)
+  let fPointer = registeredMaxProcs[(tiCol, tiRes)]
+  let f = cast[proc (c: Column): R {.nimcall.}](fPointer)
+  f(c)
+
 # -----------------------------------------------------------------------------
 # Comparison (untyped)
 # -----------------------------------------------------------------------------
@@ -100,6 +122,9 @@ when not defined(noDefaultRegistration):
   registerSingleColumnType(int)
   registerSingleColumnType(int8)
   registerSingleColumnType(float)
+
+  registerColumnPairType(int, int)
+  registerColumnPairType(int, float)
 
 
 # -----------------------------------------------------------------------------

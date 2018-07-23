@@ -90,7 +90,8 @@ suite "aggregations":
   test("max"):
     let c = @[2, 3, 1].toColumn
     check c.max() == 3
-    #check c.toTypeless.max() == 3
+    check c.toTypeless.max(int) == 3
+    check c.toTypeless.max(float) == 3.0
 
 suite "comparison (typed)":
 
