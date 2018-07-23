@@ -34,6 +34,29 @@ suite "constructors":
     check c.toSequence == @[0, 1, 2, 3, 4]
 
 
+suite "general":
+
+  test("$"):
+    let c = @[1, 2, 3].toColumn
+    check $c == "TypedCol[int](@[1, 2, 3])"
+    check $(c.toTypeless) == "TypedCol[int](@[1, 2, 3])"
+
+  test("typeName"):
+    let c = @[1, 2, 3].toColumn
+    check c.typeName == "int"
+    check c.toTypeless.typeName == "int"
+
+  test("len"):
+    let c = @[1, 2, 3].toColumn
+    check c.len == 3
+    check c.toTypeless.len == 3
+
+  test("getString"):
+    let c = @[1, 2, 3].toColumn
+    check c.getString(0) == "1"
+    check c.toTypeless.getString(0) == "1"
+
+
 suite "iterators":
 
   test("items"):
@@ -57,6 +80,7 @@ suite "aggregations":
   test("sum"):
     let c = @[1, 2, 3].toColumn
     check c.sum() == 6
+    check c.toTypeless.sum() == 6
 
   test("mean"):
     let c = @[1, 2, 3].toColumn
@@ -66,6 +90,7 @@ suite "aggregations":
   test("max"):
     let c = @[2, 3, 1].toColumn
     check c.max() == 3
+    #check c.toTypeless.max() == 3
 
 suite "comparison (typed)":
 

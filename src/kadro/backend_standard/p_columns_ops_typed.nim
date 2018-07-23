@@ -11,6 +11,7 @@ import arraymancer # for toTensor
 
 import p_columns_datatypes
 import p_columns_constructors
+import p_columns_methods
 import p_utils
 
 
@@ -34,12 +35,8 @@ iterator enumerate*[T](c: TypedCol[T]): (int, T) =
 # -----------------------------------------------------------------------------
 
 proc toTypeless*[T](c: TypedCol[T]): Column =
-  ## Converts a typed column into an untyped column, which can obviously
-  ## be auto-casted anyway. The function only exists as a syntactical
-  ## convenience internally for unit tests.
-  result = c
-  var dummy: T
-  result.typeInfo = getTypeInfo(dummy) # TODO remove hack, TypedCols should always have proper typeInfos
+  ## Converts a typed column into an untyped column.
+  c
 
 proc toSequence*[T](c: TypedCol[T]): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
@@ -53,20 +50,16 @@ proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
 # Aggregations
 # -----------------------------------------------------------------------------
 
-# Required because of: https://github.com/nim-lang/Nim/issues/8403
-template dummyConvert[T, R](x: T): R = R(x)
-
 proc sum*[T](c: TypedCol[T], R: typedesc): R =
+  # Required because of: https://github.com/nim-lang/Nim/issues/8403
+  type RR = R
   var sum: R = 0
   for x in c.data:
-    sum += dummyConvert[T, R](x)
+    sum += RR(x)
   return sum
 
 proc sum*[T](c: TypedCol[T]): float =
   c.sum(float)
-
-proc mean*[T](c: TypedCol[T]): float =
-  c.sum() / c.len.float
 
 proc maxNaive*[T](c: TypedCol[T]): T =
   if c.len == 0:

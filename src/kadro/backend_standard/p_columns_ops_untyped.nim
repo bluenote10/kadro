@@ -12,8 +12,8 @@ import arraymancer # for toTensor
 import p_columns_datatypes
 import p_columns_constructors
 import p_columns_ops_typed
+import p_columns_methods
 import p_utils
-
 
 # -----------------------------------------------------------------------------
 # Conversion
@@ -48,22 +48,18 @@ template assertTypeUnsafe*(c: Column, T: typedesc): TypedCol[T] =
 
 
 # -----------------------------------------------------------------------------
-# Generic getters
+# Untyped getters
+#
+# Note that untyped getters cannot be implemented as methods with
+# typedescs, because methods don't allow to use typedescs. See the
+# method_based_getter.nim example.
 # -----------------------------------------------------------------------------
 
-#[
-method get*(c: Column, i: int, T: typedesc) {.base.} =
-  raise newException(AssertionError, "`get` of base method should not be called.")
-
-method get*[U, T](c: TypedCol[U], i: int): T =
-  T(c.data[i])
-]#
-
 proc get*(c: Column, i: int, T: typedesc): T =
-  if c of TypedCol[T]:
-    result = cast[TypedCol[T]](c).data[i]
-  else:
-    raise newException(ValueError, "Column is not of type " & name(T))
+  # TODO: This should probably be changed to a proper `[]` operator
+  # once the typed column has accessors. The syntax will probably
+  # be something like [<index-expression>, <typedesc>].
+  result = c.assertType(T).data[i]
 
 
 # -----------------------------------------------------------------------------
@@ -87,9 +83,6 @@ proc sum*(c: Column): float =
   let f = registeredSumProcs[ti]
   f(c)
 
-proc mean*(c: Column): float =
-  c.sum() / c.len
-
 
 # -----------------------------------------------------------------------------
 # Comparison (untyped)
@@ -107,3 +100,11 @@ when not defined(noDefaultRegistration):
   registerSingleColumnType(int)
   registerSingleColumnType(int8)
   registerSingleColumnType(float)
+
+
+# -----------------------------------------------------------------------------
+# Derived procs
+# -----------------------------------------------------------------------------
+
+proc mean*(c: Column): float =
+  c.sum() / c.len
