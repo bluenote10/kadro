@@ -79,8 +79,10 @@ suite "aggregations":
 
   test("sum"):
     let c = @[1, 2, 3].toColumn
-    check c.sum() == 6
+    check c.sum() == 6.0
     check c.toTypeless.sum() == 6
+    check c.sum(int) == 6
+    # check c.toTypeless.sum(int) == 6 # TODO
 
   test("mean"):
     let c = @[1, 2, 3].toColumn

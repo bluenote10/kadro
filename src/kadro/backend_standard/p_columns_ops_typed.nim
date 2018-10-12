@@ -50,7 +50,7 @@ proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
 # Aggregations
 # -----------------------------------------------------------------------------
 
-proc sum*[T](c: TypedCol[T], R: typedesc): R =
+proc sum*[T](c: TypedCol[T], R: typedesc = float): R =
   # Required because of: https://github.com/nim-lang/Nim/issues/8403
   type RR = R
   var sum: R = 0
@@ -58,8 +58,11 @@ proc sum*[T](c: TypedCol[T], R: typedesc): R =
     sum += RR(x)
   return sum
 
+#[
+# Should no longer be required: https://github.com/nim-lang/Nim/issues/7516
 proc sum*[T](c: TypedCol[T]): float =
   c.sum(float)
+]#
 
 proc maxNaive*[T](c: TypedCol[T]): T =
   if c.len == 0:
