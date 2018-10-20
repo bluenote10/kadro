@@ -82,24 +82,38 @@ suite "iterators":
 suite "unary operations":
 
   test("sin"):
-    block: # let + inPlace = false
+    block:
       let a = @[1, 2, 3].toColumn
       let b = a.sin()
       check a.data == @[1, 2, 3]
       check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
-    block: # let + inPlace = true
-      let a = @[1, 2, 3].toColumn
-      check(not(compiles(a.sin(inPlace=true))))
-    block: # var + inPlace = false
-      var a = @[1, 2, 3].toColumn
-      let b = a.sin()
-      check a.data == @[1, 2, 3]
+      check(not(compiles(a.sinInPlace())))
+    block:
+      var a = @[1.0, 2.0, 3.0].toColumn
+      let b = a.sinInPlace()
+      check a.data == @[1.float.sin, 2.float.sin, 3.float.sin]
       check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
-    block: # var + inPlace = true
-      var a = @[1, 2, 3].toColumn
-      let b = a.sin(inPlace=true)
-      #check a.data == @[1.float.sin, 2.float.sin, 3.float.sin]
-      #check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
+    block:
+      var a = @[1.0, 2.0, 3.0].toColumn
+      let b = a.sinInPlace().sinInPlace()
+      check a.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
+      check b.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
+    block:
+      var a = @[1.0, 2.0, 3.0].toColumn
+      var b = a.sinInPlace()
+      let c = b.sinInPlace()
+      check a.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
+      check b.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
+      check c.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
+    block:
+      # gotcha: let bindings can change
+      var a = @[1.0, 2.0, 3.0].toColumn
+      let b = a.sinInPlace()
+      check a.data == @[1.float.sin, 2.float.sin, 3.float.sin]
+      check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
+      a.sinInPlace()
+      check a.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
+      check b.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
 
 
 suite "aggregations":

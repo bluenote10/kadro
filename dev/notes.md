@@ -52,3 +52,6 @@ Example implementation:
 
 Since `inPlace` affects both the argument modified of `c` and the return type
 it makes probably more sense to go for function pairs e.g. `sin` and `sinInPlace`.
+
+Also the return type needs to be var as well if we want to chain in place
+operations.
