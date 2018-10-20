@@ -1,6 +1,9 @@
 import kadro
 import unittest
 
+import math
+
+
 suite "conversion":
 
   test("seq"):
@@ -14,6 +17,7 @@ suite "conversion":
     check c.toTensor == @[1, 2, 3].toTensor
     check c.toTypeless.toTensor(int) == @[1, 2, 3].toTensor
   ]#
+
 
 suite "constructors":
 
@@ -78,8 +82,24 @@ suite "iterators":
 suite "unary operations":
 
   test("sin"):
-    let a = @[1, 2, 3].toColumn
-    let b = a.sin(inPlace=true)
+    block: # let + inPlace = false
+      let a = @[1, 2, 3].toColumn
+      let b = a.sin()
+      check a.data == @[1, 2, 3]
+      check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
+    block: # let + inPlace = true
+      let a = @[1, 2, 3].toColumn
+      check(not(compiles(a.sin(inPlace=true))))
+    block: # var + inPlace = false
+      var a = @[1, 2, 3].toColumn
+      let b = a.sin()
+      check a.data == @[1, 2, 3]
+      check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
+    block: # var + inPlace = true
+      var a = @[1, 2, 3].toColumn
+      let b = a.sin(inPlace=true)
+      #check a.data == @[1.float.sin, 2.float.sin, 3.float.sin]
+      #check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
 
 
 suite "aggregations":

@@ -52,15 +52,18 @@ proc toSequence*[T](c: TypedCol[T]): seq[T] =
 # Unary operations
 # -----------------------------------------------------------------------------
 
-proc sin*(c: TypedCol[SomeNumber], inPlace: static[bool] = false): TypedCol[float] =
+proc sin*[T: SomeNumber](c: TypedCol[T], inPlace: static[bool] = false): TypedCol[float] =
   when inPlace:
-    {.error: "TypeCol needs to be a var for in place operation".}
+    static:
+      error: "TypeCol needs to be a var for in place operation"
+    #{.error: "TypeCol needs to be a var for in place operation".}
+    echo "should not be reached"
   else:
     result = newTypedCol[float](c.len)
     for i, x in c.data:
       result.data[i] = math.sin(x.float)
 
-proc sin*(c: var TypedCol[SomeNumber], inPlace: static[bool] = false): TypedCol[float] =
+proc sin*[T: SomeNumber](c: var TypedCol[T], inPlace: static[bool] = false): TypedCol[T] =
   when inPlace:
     for i, x in c.data:
       c.data[i] = math.sin(x.float)
