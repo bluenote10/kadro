@@ -1,6 +1,5 @@
 import kadro
 import unittest
-import arraymancer
 
 suite "conversion":
 
@@ -9,11 +8,12 @@ suite "conversion":
     check c.toSequence == @[1, 2, 3]
     check c.toTypeless.toSequence(int) == @[1, 2, 3]
 
+  #[
   test("tensor"):
     let c = @[1, 2, 3].toColumn
     check c.toTensor == @[1, 2, 3].toTensor
     check c.toTypeless.toTensor(int) == @[1, 2, 3].toTensor
-
+  ]#
 
 suite "constructors":
 
@@ -73,6 +73,13 @@ suite "iterators":
       check i == expected - 1
       check x == expected
       expected.inc
+
+
+suite "unary operations":
+
+  test("sin"):
+    let a = @[1, 2, 3].toColumn
+    let b = a.sin(inPlace=true)
 
 
 suite "aggregations":

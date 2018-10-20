@@ -4,8 +4,8 @@ import strutils
 import typetraits
 import macros
 import lenientops
-# import threadpool
-import tensor.backend.openmp
+
+import tensor/backend/openmp
 
 import p_columns_datatypes
 import p_utils

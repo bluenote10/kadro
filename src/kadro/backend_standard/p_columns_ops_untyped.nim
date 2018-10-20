@@ -6,8 +6,8 @@ import macros
 import lenientops
 import tables
 
-import tensor.backend.openmp
-import arraymancer # for toTensor
+import tensor/backend/openmp
+# import arraymancer # for toTensor
 
 import p_columns_datatypes
 import p_columns_constructors
@@ -23,8 +23,10 @@ proc toSequence*(c: Column, T: typedesc): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
   c.assertType(T).toSequence()
 
-proc toTensor*(c: Column, T: typedesc): Tensor[T] =
-  c.assertType(T).toTensor()
+# temporarily deactivated to speed up compilation
+# maybe move into separate extension module
+# proc toTensor*(c: Column, T: typedesc): Tensor[T] =
+#   c.assertType(T).toTensor()
 
 
 # -----------------------------------------------------------------------------

@@ -2,12 +2,13 @@ import sugar
 import sequtils
 import strutils
 import typetraits
+import math
 import macros
 import lenientops
 # import threadpool
-import tensor.backend.openmp
+import tensor/backend/openmp
 
-import arraymancer # for toTensor
+# import arraymancer # for toTensor
 
 import p_columns_datatypes
 import p_columns_constructors
@@ -42,9 +43,33 @@ proc toSequence*[T](c: TypedCol[T]): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
   c.data
 
-proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
-  c.data.toTensor
+# temporarily deactivated to speed up compilation
+# maybe move into separate extension module
+# proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
+#   c.data.toTensor
 
+# -----------------------------------------------------------------------------
+# Unary operations
+# -----------------------------------------------------------------------------
+
+proc sin*(c: TypedCol[SomeNumber], inPlace: static[bool] = false): TypedCol[float] =
+  when inPlace:
+    {.error: "TypeCol needs to be a var for in place operation".}
+  else:
+    result = newTypedCol[float](c.len)
+    for i, x in c.data:
+      result.data[i] = math.sin(x.float)
+
+proc sin*(c: var TypedCol[SomeNumber], inPlace: static[bool] = false): TypedCol[float] =
+  when inPlace:
+    for i, x in c.data:
+      c.data[i] = math.sin(x.float)
+      return c
+  else:
+    result = newTypedCol[float](c.len)
+    for i, x in c.data:
+      result.data[i] = math.sin(x.float)
+      
 
 # -----------------------------------------------------------------------------
 # Aggregations
