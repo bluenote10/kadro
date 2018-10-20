@@ -24,6 +24,10 @@ iterator items*[T](c: TypedCol[T]): T =
   for x in items(c.data):
     yield x
 
+iterator mitems*[T](c: var TypedCol[T]): var T =
+  for x in mitems(c.data):
+    yield x
+
 iterator enumerate*[T](c: TypedCol[T]): (int, T) =
   var i = 0
   for x in items(c.data):
@@ -52,14 +56,48 @@ proc toSequence*[T](c: TypedCol[T]): seq[T] =
 # Unary operations
 # -----------------------------------------------------------------------------
 
+template applyInline*(c: var TypedCol, op: untyped): untyped =
+  # TODO, if c is a result of a function
+  # how to ensure that it is not called twice
+  # TODO: enable omp_parallel_blocks(block_offset, block_size, t.size):
+  for x {.inject.} in c.mitems():
+    x = op
+
+
+template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
+  let z = c # ensure that if t is the result of a function it is not called multiple times
+
+  type outType = type((
+    block:
+      var x{.inject.}: type(items(z));
+      op
+  ))
+
+  # var dest = newTensorUninit[outType](z.shape)
+  # withMemoryOptimHints()
+  # let data{.restrict.} = dest.dataArray # Warning ⚠: data pointed to will be mutated
+
+  # TODO: add uninit version
+  var dest = newTypedCol[float](c.len)
+
+  # TODO: enable omp_parallel_blocks(block_offset, block_size, dest.size):
+  for i, x {.inject.} in z.enumerate():
+    dest.data[i] = op
+  dest
+
+
 proc sin*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
-  result = newTypedCol[float](c.len)
-  for i, x in c.data:
-    result.data[i] = math.sin(x.float)
+  #result = newTypedCol[float](c.len)
+  #for i, x in c.data:
+  #  result.data[i] = math.sin(x.float)
+  c.mapInline:
+    math.sin(x.float)
 
 proc sinInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
-  for i, x in c.data:
-    c.data[i] = math.sin(x.float).T
+  #for i, x in c.data:
+  #  c.data[i] = math.sin(x.float).T
+  c.applyInline:
+    math.sin(x.float).T
   return c
       
 
