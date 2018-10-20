@@ -106,7 +106,8 @@ suite "unary operations":
       check b.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
       check c.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
     block:
-      # gotcha: let bindings can change
+      # due to ref semantics, chaining inPlace has this gotcha,
+      # maybe not returning anything is better?
       var a = @[1.0, 2.0, 3.0].toColumn
       let b = a.sinInPlace()
       check a.data == @[1.float.sin, 2.float.sin, 3.float.sin]

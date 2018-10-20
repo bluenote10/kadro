@@ -1,4 +1,3 @@
-import typetraits
 
 type
   Column* = ref object of RootObj
@@ -6,4 +5,3 @@ type
 
   TypedCol*[T] = ref object of Column
     data*: seq[T]
-

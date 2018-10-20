@@ -24,7 +24,7 @@ proc toColumn*[T](s: openarray[T]): TypedCol[T] =
     return TypedCol[T](typeInfo: getTypeInfo(T), data: @s)
 
 proc zeros*[T](length: int): TypedCol[T] =
-  let typedCol = TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqOfCap[T](length))
+  var typedCol = TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqOfCap[T](length))
   typedCol.data.setLen(length)
   when ImplFeature.OpenMP notin implFeatures:
     #for i in 0 ..< length:
@@ -36,7 +36,7 @@ proc zeros*[T](length: int): TypedCol[T] =
   return typedCol
 
 proc ones*[T](length: int): TypedCol[T] =
-  let typedCol = TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqOfCap[T](length))
+  var typedCol = TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqOfCap[T](length))
   typedCol.data.setLen(length)
   when ImplFeature.OpenMP notin implFeatures:
     for i in 0 ..< length:
@@ -47,7 +47,7 @@ proc ones*[T](length: int): TypedCol[T] =
   return typedCol
 
 proc arange*[T](length: int): TypedCol[T] =
-  let typedCol = TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqOfCap[T](length))
+  var typedCol = TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqOfCap[T](length))
   typedCol.data.setLen(length)
   when ImplFeature.OpenMP notin implFeatures:
     for i in 0 ..< length:
