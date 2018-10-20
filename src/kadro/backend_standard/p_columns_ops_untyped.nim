@@ -65,6 +65,30 @@ proc get*(c: Column, i: int, T: typedesc): T =
 
 
 # -----------------------------------------------------------------------------
+# Macros for implementations
+# -----------------------------------------------------------------------------
+
+#[
+macro implement(methodName: untyped): untyped =
+  let methodNameString = $methodName
+  result = newStmtList()
+
+  # initialize the registered procs table
+  let tableSymbol = genSym(nskVar, "registeredProcs_" & methodNameString)
+
+  template defineTable(tableSymbol) =
+    var tableSymbol = initTable[pointer, pointer]()
+
+  result.add(getAst(defineTable(tableSymbol)))
+
+  # add the registration/implementation
+
+  echo result.repr
+
+implement(sin)
+]#
+
+# -----------------------------------------------------------------------------
 # Aggregations
 # -----------------------------------------------------------------------------
 
@@ -92,7 +116,7 @@ template registerColumnPairType*(T: typedesc, R: typedesc) =
   # Uses the trick from: https://forum.nim-lang.org/t/3267
   let tiCol = getTypeInfo(T)
   let tiRes = getTypeInfo(R)
-  echo "registering column pair ops for typeInfo: T = ", tiCol.repr[0..^2], " T = ", tiRes.repr[0..^2]
+  echo "registering column pair ops for typeInfo: T = ", tiCol.repr[0..^2], " R = ", tiRes.repr[0..^2]
 
   proc max_impl(c: Column): R {.gensym.} =
     type RR = R
