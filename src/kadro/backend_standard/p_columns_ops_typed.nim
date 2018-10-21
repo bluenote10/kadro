@@ -57,15 +57,17 @@ proc toSequence*[T](c: TypedCol[T]): seq[T] =
 # -----------------------------------------------------------------------------
 
 template applyInline*(c: var TypedCol, op: untyped): untyped =
-  # TODO, if c is a result of a function
-  # how to ensure that it is not called twice
+  # ensure that if t is the result of a function it is not called multiple times.
+  # since the assignment it shallow, modifying z should be fine.
+  var z = c
   # TODO: enable omp_parallel_blocks(block_offset, block_size, t.size):
-  for x {.inject.} in c.mitems():
+  for x {.inject.} in z.mitems():
     x = op
 
 
 template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
-  let z = c # ensure that if t is the result of a function it is not called multiple times
+  # ensure that if t is the result of a function it is not called multiple times.
+  let z = c
 
   type outType = type((
     block:
@@ -78,7 +80,7 @@ template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
   # let data{.restrict.} = dest.dataArray # Warning ⚠: data pointed to will be mutated
 
   # TODO: add uninit version
-  var dest = newTypedCol[float](c.len)
+  var dest = newTypedCol[outType](z.len)
 
   # TODO: enable omp_parallel_blocks(block_offset, block_size, dest.size):
   for i, x {.inject.} in z.enumerate():

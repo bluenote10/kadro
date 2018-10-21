@@ -93,13 +93,22 @@ suite "unary operations":
 
   test("applyInline"):
     var callCount = 0
-    proc makeMut[T](c: var TypedCol[T]): var TypedCol[T] =
-      echo "calling makeMut"
+    proc fromCall[T](c: var TypedCol[T]): var TypedCol[T] =
       callCount += 1
       c
     var c = newCol([1, 2, 3])
-    makeMut[int](c).applyInline(x*x)
+    fromCall[int](c).applyInline(x*x)
     check callCount == 1
+    check c.data == @[1, 4, 9]
+
+  test("mapInline"):
+    var callCount = 0
+    proc fromCall[T](): TypedCol[T] =
+      callCount += 1
+      newCol([1, 2, 3])
+    let c = fromCall[int]().mapInline(x*x)
+    check callCount == 1
+    check c.data == @[1, 4, 9]
 
   test("sin"):
     block:
