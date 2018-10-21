@@ -90,10 +90,12 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
   result += getAst(defineTable(tableSymbol))
 
   # add the registration/instantiation
-  template defineRegisterInstantiation(tableSymbol, regTemplSymbol, instSymbol, resultType, op) =
+  template defineRegisterInstantiation(
+    tableSymbol, regTemplSymbol, instSymbol, resultType, op, methodNameString
+  ) =
     template regTemplSymbol*(T: typedesc) =
       let ti = getTypeInfo(T)
-      echo "registering for ", name(T), " (typeInfo: ", ti, ")"
+      echo "registering ", methodNameString, " for ", name(T), " (typeInfo: ", ti, ")"
     
       proc instSymbol*(colUntyped: Column): resultType {.gensym.} =
         let col {.inject.} = colUntyped.assertType(T)
@@ -104,7 +106,7 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
   let regTemplSymbol = ident("registerInstantiation" & methodNameCamel)
   let instSymbol = ident(methodNameString & "Instantiation")
   result += getAst(defineRegisterInstantiation(
-    tableSymbol, regTemplSymbol, instSymbol, resultType, op
+    tableSymbol, regTemplSymbol, instSymbol, resultType, op, methodNameString
   ))
         
   # add the actual method performing the lookup

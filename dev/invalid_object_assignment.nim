@@ -1,21 +1,34 @@
 # Apparently this requires true ref objects,
 # shallow semantics are not enough.
 
-type
-  Column* = object of RootObj
-    typeInfo*: pointer
+when false:
+  type
+    Column* = object of RootObj
+      typeInfo*: pointer
 
-  TypedCol* {.shallow.} [T] = object of Column
-    data*: seq[T]
+    TypedCol* {.shallow.} [T] = object of Column
+      data*: seq[T]
 
 
-proc toTypeless*[T](c: TypedCol[T]): Column =
-  #c
+  proc toTypeless*[T](c: TypedCol[T]): Column =
+    #c
 
-  #let x: Column = c
-  #return x
+    #let x: Column = c
+    #return x
 
-  result = cast[Column](c)
+    result = cast[Column](c)
 
-let a = TypedCol[int]()
-let b = a.toTypeless
+  let a = TypedCol[int]()
+  let b = a.toTypeless
+
+when true:
+  type
+    Base* = object of RootObj
+    Sub* = object of Base
+
+  proc toBase*(x: Sub): Base =
+    x
+  
+  let a = Sub()
+  let base1: Base = cast[Base](a)
+  
