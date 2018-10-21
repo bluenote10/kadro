@@ -34,7 +34,7 @@ suite "constructors":
     check c.len == 10000
     # not really testable
     # check c.toSequence.any(x => x != 0)
-  
+
   test("toColumn"):
     check  [1, 2, 3].toColumn.toSequence == @[1, 2, 3]
     check @[1, 2, 3].toColumn.toSequence == @[1, 2, 3]
@@ -91,6 +91,16 @@ suite "iterators":
 
 suite "unary operations":
 
+  test("applyInline"):
+    var callCount = 0
+    proc makeMut[T](c: var TypedCol[T]): var TypedCol[T] =
+      echo "calling makeMut"
+      callCount += 1
+      c
+    var c = newCol([1, 2, 3])
+    makeMut[int](c).applyInline(x*x)
+    check callCount == 1
+
   test("sin"):
     block:
       let a = @[1, 2, 3].toColumn
@@ -133,7 +143,7 @@ suite "aggregations":
     let c = newCol([1, 2, 3])
     check c.sum() == 6.0
     check c.sum(int) == 6
- 
+
   test("mean"):
     let c = newCol([1, 2, 3])
     check c.mean() == 2
