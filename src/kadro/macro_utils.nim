@@ -20,7 +20,7 @@ macro forEachTypeImpl(ident: untyped, types: typed, body: untyped): untyped =
   result = newStmtList()
   for t in subtypes:
     result.add(getAst(iteration(ident, t, body)))
-  echo result.repr
+  # echo result.repr
 
 
 macro forEachType*(inExpression, body: untyped): untyped =
@@ -38,4 +38,4 @@ macro forEachType*(inExpression, body: untyped): untyped =
       forEachTypeImpl(ident, tmpType, body)
 
   result = getAst(resultAst(ident, types, body))
-  echo result.repr
+  # echo result.repr

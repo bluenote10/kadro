@@ -9,6 +9,7 @@ import tables
 import tensor/backend/openmp
 # import arraymancer # for toTensor
 
+import ../macro_utils
 import p_columns_datatypes
 import p_columns_constructors
 import p_columns_ops_typed
@@ -125,8 +126,8 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
   echo result.repr
 
 implementUnary(sin, Column): col.sin()
-registerInstantiationSin(float)
-registerInstantiationSin(float32)
+forEachType(T in SomeNumber):
+  registerInstantiationSin(T)
 
 # -----------------------------------------------------------------------------
 # Aggregations
