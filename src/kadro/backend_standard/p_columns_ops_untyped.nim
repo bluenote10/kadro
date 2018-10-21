@@ -68,25 +68,63 @@ proc get*(c: Column, i: int, T: typedesc): T =
 # Macros for implementations
 # -----------------------------------------------------------------------------
 
-#[
-macro implement(methodName: untyped): untyped =
+proc `$`(p: pointer): string =
+  # use repr, but strip the newline
+  p.repr[0 ..< ^1]
+ 
+proc `+=`(father, child: NimNode) =
+  # convenience for appending to NimNodes
+  father.add(child)
+
+macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyped =
   let methodNameString = $methodName
+  let methodNameCamel = methodNameString[0].toUpperAscii & methodNameString[1 .. ^1]
+
   result = newStmtList()
 
   # initialize the registered procs table
-  let tableSymbol = genSym(nskVar, "registeredProcs_" & methodNameString)
-
   template defineTable(tableSymbol) =
     var tableSymbol = initTable[pointer, pointer]()
 
-  result.add(getAst(defineTable(tableSymbol)))
+  let tableSymbol = genSym(nskVar, "registeredProcs" & methodNameCamel)
+  result += getAst(defineTable(tableSymbol))
 
-  # add the registration/implementation
+  # add the registration/instantiation
+  template defineRegisterInstantiation(tableSymbol, regTemplSymbol, instSymbol, resultType, op) =
+    template regTemplSymbol*(T: typedesc) =
+      let ti = getTypeInfo(T)
+      echo "registering for ", name(T), " (typeInfo: ", ti, ")"
+    
+      proc instSymbol*(colUntyped: Column): resultType {.gensym.} =
+        let col {.inject.} = colUntyped.assertType(T)
+        op
+    
+      tableSymbol[ti] = cast[pointer](instSymbol)
 
+  let regTemplSymbol = ident("registerInstantiation" & methodNameCamel)
+  let instSymbol = ident(methodNameString & "Instantiation")
+  result += getAst(defineRegisterInstantiation(
+    tableSymbol, regTemplSymbol, instSymbol, resultType, op
+  ))
+        
+  # add the actual method performing the lookup
+  template defineMethod(methodName, resultType, tableSymbol) = 
+    proc methodName*(c: Column): resultType =
+      let ti = c.typeInfo
+      # instead of using the cast we could store the real function
+      # signatures in the table.
+      let fPointer = tableSymbol[ti]
+      let f = cast[proc (c: Column): resultType {.nimcall.}](fPointer)
+      f(c)
+ 
+  result += getAst(defineMethod(
+    methodName, resultType, tableSymbol
+  ))
   echo result.repr
 
-implement(sin)
-]#
+implementUnary(sin, Column): col.sin()
+registerInstantiationSin(float)
+registerInstantiationSin(float32)
 
 # -----------------------------------------------------------------------------
 # Aggregations
@@ -96,7 +134,7 @@ var registeredSumProcs = initTable[pointer, Column -> float]()
 
 template registerSingleColumnType*(T: typedesc) =
   let ti = getTypeInfo(T)
-  echo "registering single column ops for typeInfo: ", ti.repr[0..^2]
+  echo "registering single column ops for typeInfo: ", ti
 
   proc sum_impl*(c: Column): float {.gensym.} =
     let cTyped = c.assertType(T)
@@ -116,7 +154,7 @@ template registerColumnPairType*(T: typedesc, R: typedesc) =
   # Uses the trick from: https://forum.nim-lang.org/t/3267
   let tiCol = getTypeInfo(T)
   let tiRes = getTypeInfo(R)
-  echo "registering column pair ops for typeInfo: T = ", tiCol.repr[0..^2], " R = ", tiRes.repr[0..^2]
+  echo "registering column pair ops for typeInfo: T = ", tiCol, " R = ", tiRes
 
   proc max_impl(c: Column): R {.gensym.} =
     type RR = R
