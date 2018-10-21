@@ -1,6 +1,8 @@
 import kadro
 import unittest
 
+import sequtils
+import sugar
 import math
 
 proc newCol[T](s: openarray[T]): TypedCol[T] =
@@ -22,9 +24,20 @@ suite "conversion":
 
 suite "constructors":
 
+  test("newTypedCol"):
+    let c = newTypedCol[int](100)
+    check c.len == 100
+    check c.toSequence.all(x => x == 0)
+
+  test("newTypedColUninit"):
+    let c = newTypedColUninit[int](10000)
+    check c.len == 10000
+    # not really testable
+    # check c.toSequence.any(x => x != 0)
+  
   test("toColumn"):
-    let c = @[1, 2, 3].toColumn
-    check c.toSequence == @[1, 2, 3]
+    check  [1, 2, 3].toColumn.toSequence == @[1, 2, 3]
+    check @[1, 2, 3].toColumn.toSequence == @[1, 2, 3]
 
   test("zeros"):
     let c = zeros[int](5)
