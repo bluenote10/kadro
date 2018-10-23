@@ -87,6 +87,22 @@ template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
     dest.data[i] = op
   dest
 
+#[
+proc abs*[T: SomeNumber](c: TypedCol[T]): TypedCol[T] =
+  when T is SomeUnsignedInt:
+    c
+  else:
+    c.mapInline:
+      abs(x).T
+
+proc absInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+  when T is SomeUnsignedInt:
+    c
+  else:
+    c.applyInline:
+      abs(x).T
+    return c
+]#
 
 proc sin*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
   #result = newTypedCol[float](c.len)
@@ -101,7 +117,27 @@ proc sinInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardab
   c.applyInline:
     math.sin(x.float).T
   return c
-      
+
+
+proc cos*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
+  c.mapInline:
+    math.cos(x.float)
+
+proc cosInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+  c.applyInline:
+    math.cos(x.float).T
+  return c
+
+
+proc tan*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
+  c.mapInline:
+    math.tan(x.float)
+
+proc tanInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+  c.applyInline:
+    math.tan(x.float).T
+  return c
+
 
 # -----------------------------------------------------------------------------
 # Aggregations

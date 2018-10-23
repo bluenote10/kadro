@@ -72,7 +72,7 @@ proc get*(c: Column, i: int, T: typedesc): T =
 proc `$`(p: pointer): string =
   # use repr, but strip the newline
   p.repr[0 ..< ^1]
- 
+
 proc `+=`(father, child: NimNode) =
   # convenience for appending to NimNodes
   father.add(child)
@@ -97,11 +97,11 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
     template regTemplSymbol*(T: typedesc) =
       let ti = getTypeInfo(T)
       echo "registering ", methodNameString, " for ", name(T), " (typeInfo: ", ti, ")"
-    
+
       proc instSymbol*(colUntyped: Column): resultType {.gensym.} =
         let col {.inject.} = colUntyped.assertType(T)
         op
-    
+
       tableSymbol[ti] = cast[pointer](instSymbol)
 
   let regTemplSymbol = ident("registerInstantiation" & methodNameCamel)
@@ -109,9 +109,9 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
   result += getAst(defineRegisterInstantiation(
     tableSymbol, regTemplSymbol, instSymbol, resultType, op, methodNameString
   ))
-        
+
   # add the actual method performing the lookup
-  template defineMethod(methodName, resultType, tableSymbol) = 
+  template defineMethod(methodName, resultType, tableSymbol) =
     proc methodName*(c: Column): resultType =
       let ti = c.typeInfo
       # instead of using the cast we could store the real function
@@ -119,15 +119,22 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
       let fPointer = tableSymbol[ti]
       let f = cast[proc (c: Column): resultType {.nimcall.}](fPointer)
       f(c)
- 
+
   result += getAst(defineMethod(
     methodName, resultType, tableSymbol
   ))
   echo result.repr
 
+#implementUnary(abs, Column): col.abs()
 implementUnary(sin, Column): col.sin()
+#implementUnary(cos, Column): col.cos()
+#implementUnary(tan, Column): col.tan()
+
 forEachType(T in SomeNumber):
+  #registerInstantiationAbs(T)
   registerInstantiationSin(T)
+  #registerInstantiationCos(T)
+  #registerInstantiationTan(T)
 
 # -----------------------------------------------------------------------------
 # Aggregations
