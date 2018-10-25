@@ -39,6 +39,13 @@ suite "constructors":
     check  [1, 2, 3].toColumn.toSequence == @[1, 2, 3]
     check @[1, 2, 3].toColumn.toSequence == @[1, 2, 3]
 
+  test("copy"):
+    var a = newCol([1, 2, 3])
+    var b = a.copy()
+    b.applyInline: x*x
+    check a.toSequence == @[1, 2, 3]
+    check b.toSequence == @[1, 4, 9]
+
   test("zeros"):
     let c = zeros[int](5)
     check c.toSequence == @[0, 0, 0, 0, 0]
@@ -91,7 +98,7 @@ suite "iterators":
 
 suite "unary operations":
 
-  test("applyInline"):
+  test("applyInline (call count)"):
     var callCount = 0
     proc fromCall[T](c: var TypedCol[T]): var TypedCol[T] =
       callCount += 1
@@ -101,7 +108,7 @@ suite "unary operations":
     check callCount == 1
     check c.data == @[1, 4, 9]
 
-  test("mapInline"):
+  test("mapInline (call count)"):
     var callCount = 0
     proc fromCall[T](): TypedCol[T] =
       callCount += 1
@@ -110,24 +117,25 @@ suite "unary operations":
     check callCount == 1
     check c.data == @[1, 4, 9]
 
-  test("sin"):
-    block:
+  test("unary behavior"):
+    # using sin to test general behavior
+    block:  # let map vs inPlace
       let a = @[1, 2, 3].toColumn
       let b = a.sin()
       check a.data == @[1, 2, 3]
       check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
       check(not(compiles(a.sinInPlace())))
-    block:
+    block:  # var inPlace
       var a = @[1.0, 2.0, 3.0].toColumn
       let b = a.sinInPlace()
       check a.data == @[1.float.sin, 2.float.sin, 3.float.sin]
       check b.data == @[1.float.sin, 2.float.sin, 3.float.sin]
-    block:
+    block:  # var inPlace repeated
       var a = @[1.0, 2.0, 3.0].toColumn
       let b = a.sinInPlace().sinInPlace()
       check a.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
       check b.data == @[1.float.sin.sin, 2.float.sin.sin, 3.float.sin.sin]
-    block:
+    block:  # var inPlace repeated multi vars
       var a = @[1.0, 2.0, 3.0].toColumn
       var b = a.sinInPlace()
       let c = b.sinInPlace()

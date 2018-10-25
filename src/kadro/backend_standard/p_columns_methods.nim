@@ -18,10 +18,11 @@ method len*(c: Column): int {.base.} =
   raise newException(AssertionError, "`len` of base method should not be called.")
 
 method len*[T](c: TypedCol[T]): int =
-  result = c.data.len
+  result = c.size
 
 method getString*(c: Column, i: int): string {.base.} =
   raise newException(AssertionError, "`get` of base method should not be called.")
 
 method getString*[T](c: TypedCol[T], i: int): string =
+  # TODO: handle mask/index
   $c.data[i]

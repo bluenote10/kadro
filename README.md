@@ -1,0 +1,3 @@
+# Kadro
+
+Experiments towards dynamically typed DataFrames...

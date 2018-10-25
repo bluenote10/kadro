@@ -4,6 +4,7 @@ import strutils
 import typetraits
 import macros
 import lenientops
+import options
 
 import tensor/backend/openmp
 
@@ -14,20 +15,53 @@ import ../impltype
 const implFeatures = getImplFeatures()
 
 
+# -----------------------------------------------------------------------------
+# Base constructors
+# -----------------------------------------------------------------------------
+
 proc newTypedCol*[T](size: int): TypedCol[T] =
-  TypedCol[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
+  TypedCol[T](
+    typeInfo: getTypeInfo(T),
+    data: newSeq[T](size),
+    size: size,
+  )
 
 
 proc newTypedColUninit*[T](size: int): TypedCol[T] =
-  TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqUninitialized[T](size))
+  TypedCol[T](
+    typeInfo: getTypeInfo(T),
+    data: newSeqUninitialized[T](size),
+    size: size,
+  )
+
+
+proc newTypedColMasked*[T](data: seq[T], mask: Mask): TypedCol[T] =
+  TypedCol[T](
+    typeInfo: getTypeInfo(T),
+    data: data,
+    mask: some(mask),
+  )
 
 
 proc toColumn*[T](s: openarray[T]): TypedCol[T] =
-  when s is seq:
-    return TypedCol[T](typeInfo: getTypeInfo(T), data: s)
-  else:
-    return TypedCol[T](typeInfo: getTypeInfo(T), data: @s)
+  return TypedCol[T](
+    typeInfo: getTypeInfo(T),
+    data: @s,
+    size: s.len,
+  )
 
+
+proc copy*[T](c: TypedCol[T]): TypedCol[T] =
+  return TypedCol[T](
+    typeInfo: c.typeInfo,
+    data: c.data,
+    size: c.size,
+  )
+
+
+# -----------------------------------------------------------------------------
+# Secondary constructors
+# -----------------------------------------------------------------------------
 
 proc zeros*[T](length: int): TypedCol[T] =
   var typedCol = newTypedColUninit[T](length)

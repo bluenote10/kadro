@@ -87,10 +87,10 @@ template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
     dest.data[i] = op
   dest
 
-#[
+
 proc abs*[T: SomeNumber](c: TypedCol[T]): TypedCol[T] =
   when T is SomeUnsignedInt:
-    c
+    c # TODO: we should copy here to avoid unexpected behavior
   else:
     c.mapInline:
       abs(x).T
@@ -102,7 +102,7 @@ proc absInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardab
     c.applyInline:
       abs(x).T
     return c
-]#
+
 
 proc sin*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
   #result = newTypedCol[float](c.len)
@@ -151,11 +151,6 @@ proc sum*[T](c: TypedCol[T], R: typedesc = float): R =
     sum += RR(x)
   return sum
 
-#[
-# Should no longer be required: https://github.com/nim-lang/Nim/issues/7516
-proc sum*[T](c: TypedCol[T]): float =
-  c.sum(float)
-]#
 
 proc maxNaive*[T](c: TypedCol[T]): T =
   if c.len == 0:
@@ -166,6 +161,7 @@ proc maxNaive*[T](c: TypedCol[T]): T =
       if c.arr[i] > curMax:
         curMax = c.arr[i]
     return curMax
+
 
 proc max*[T](c: TypedCol[T]): T =
   # Optimized implementation. Seems to be faster for larger types (64 bit)

@@ -125,16 +125,16 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
   ))
   echo result.repr
 
-#implementUnary(abs, Column): col.abs()
+implementUnary(abs, Column): col.abs()
 implementUnary(sin, Column): col.sin()
-#implementUnary(cos, Column): col.cos()
-#implementUnary(tan, Column): col.tan()
+implementUnary(cos, Column): col.cos()
+implementUnary(tan, Column): col.tan()
 
 forEachType(T in SomeNumber):
-  #registerInstantiationAbs(T)
+  registerInstantiationAbs(T)
   registerInstantiationSin(T)
-  #registerInstantiationCos(T)
-  #registerInstantiationTan(T)
+  registerInstantiationCos(T)
+  registerInstantiationTan(T)
 
 # -----------------------------------------------------------------------------
 # Aggregations
