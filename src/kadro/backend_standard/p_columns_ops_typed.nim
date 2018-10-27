@@ -21,12 +21,32 @@ import p_utils
 # -----------------------------------------------------------------------------
 
 iterator items*[T](c: TypedCol[T]): T =
-  for x in items(c.data):
-    yield x
+  if c.index is BoolIndex:
+    let index = cast[BoolIndex](c.index)
+    for i in 0 ..< c.data.len:
+      if index.mask[i]:
+        yield c.data[i]
+  elif c.index is IntIndex:
+    let index = cast[IntIndex](c.index)
+    for i in index.indices:
+      yield c.data[i]
+  else:    
+    for x in items(c.data):
+      yield x
 
 iterator mitems*[T](c: var TypedCol[T]): var T =
-  for x in mitems(c.data):
-    yield x
+  if c.index is BoolIndex:
+    let index = cast[BoolIndex](c.index)
+    for i in 0 ..< c.data.len:
+      if index.mask[i]:
+        yield c.data[i]
+  elif c.index is IntIndex:
+    let index = cast[IntIndex](c.index)
+    for i in index.indices:
+      yield c.data[i]
+  else:    
+    for x in mitems(c.data):
+      yield x
 
 iterator enumerate*[T](c: TypedCol[T]): (int, T) =
   var i = 0
@@ -58,7 +78,7 @@ proc toSequence*[T](c: TypedCol[T]): seq[T] =
 
 template applyInline*(c: var TypedCol, op: untyped): untyped =
   # ensure that if t is the result of a function it is not called multiple times.
-  # since the assignment it shallow, modifying z should be fine.
+  # since the assignment is shallow, modifying z should be fine.
   var z = c
   # TODO: enable omp_parallel_blocks(block_offset, block_size, t.size):
   for x {.inject.} in z.mitems():
@@ -79,8 +99,7 @@ template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
   # withMemoryOptimHints()
   # let data{.restrict.} = dest.dataArray # Warning ⚠: data pointed to will be mutated
 
-  # TODO: add uninit version
-  var dest = newTypedCol[outType](z.len)
+  var dest = newTypedColUninit[outType](z.len)
 
   # TODO: enable omp_parallel_blocks(block_offset, block_size, dest.size):
   for i, x {.inject.} in z.enumerate():

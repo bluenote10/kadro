@@ -34,13 +34,14 @@ proc newTypedColUninit*[T](size: int): TypedCol[T] =
     size: size,
   )
 
-
+#[
 proc newTypedColMasked*[T](data: seq[T], mask: Mask): TypedCol[T] =
   TypedCol[T](
     typeInfo: getTypeInfo(T),
     data: data,
     mask: some(mask),
   )
+]#
 
 
 proc toColumn*[T](s: openarray[T]): TypedCol[T] =
