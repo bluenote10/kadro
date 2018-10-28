@@ -1,5 +1,8 @@
-import p_columns_datatypes
 import typetraits
+
+import p_columns_datatypes
+import p_index
+
 
 method `$`*(c: DataUntyped): string {.base.} =
   raise newException(AssertionError, "`$` of base method should not be called.")
@@ -34,7 +37,7 @@ method withIndex*[T](c: Data[T], index: Index): DataUntyped {.base.} =
   Data[T](
     typeInfo: c.typeInfo,
     data: c.data,
-    size: c.size,
+    size: index.len,
     index: index,
   )
 

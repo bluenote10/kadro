@@ -1,14 +1,9 @@
 import options
+
+import p_index
 import p_utils
 
 type
-  Index* = ref object of RootObj
-
-  NoIndex* = ref object of Index
-  BoolIndex* = ref object of Index
-    mask*: seq[bool]
-  IntIndex* = ref object of Index
-    indices*: seq[int]
 
   #Mask* = seq[bool]
   #Index* = seq[int]
@@ -32,6 +27,7 @@ type
     #index: Option[Index]
 
 
+#[
 template newData*[T](data, size, kind): Data[T] =
   Data[T](
     typeInfo: getTypeInfo(T),
@@ -39,3 +35,4 @@ template newData*[T](data, size, kind): Data[T] =
     size: size,
     #kind: kind,
   )
+]#

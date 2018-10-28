@@ -13,6 +13,7 @@ import tensor/backend/openmp
 import p_columns_datatypes
 import p_columns_constructors
 import p_columns_methods
+import p_index
 import p_utils
 
 
