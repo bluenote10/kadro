@@ -30,36 +30,36 @@ when impl == Impl.Arraymancer:
 type
   Column* = ref object of RootObj
 
-  TypedCol*[T] = ref object of Column
+  Data*[T] = ref object of Column
     when impl == Impl.Standard:
       data*: seq[T]
     elif impl == Impl.Arraymancer:
       data*: Tensor[T]
 
-proc newTypedCol*[T](size: int): TypedCol[T] =
+proc newData*[T](size: int): Data[T] =
   # TODO add unitialized variants
   when impl == Impl.Standard:
-    TypedCol[T](data: newSeq[T](size))
+    Data[T](data: newSeq[T](size))
   elif impl == Impl.Arraymancer:
-    TypedCol[T](data: zeros[T](size))
+    Data[T](data: zeros[T](size))
 
 method `$`*(c: Column): string {.base.} =
   raise newException(AssertionError, "`$` of base method should not be called.")
 
-method `$`*[T](c: TypedCol[T]): string =
+method `$`*[T](c: Data[T]): string =
   let typeName = name(T)
-  result = "TypedCol[" & typeName & "](" & $c.data & ")"
+  result = "Data[" & typeName & "](" & $c.data & ")"
 
 method typeName*(c: Column): string {.base.} =
   raise newException(AssertionError, "`typeName` of base method should not be called.")
 
-method typeName*[T](c: TypedCol[T]): string =
+method typeName*[T](c: Data[T]): string =
   result = name(T)
 
 method len*(c: Column): int {.base.} =
   raise newException(AssertionError, "`len` of base method should not be called.")
 
-method len*[T](c: TypedCol[T]): int =
+method len*[T](c: Data[T]): int =
   when impl == Impl.Standard:
     result = c.data.len
   elif impl == Impl.Arraymancer:
@@ -69,13 +69,13 @@ method len*[T](c: TypedCol[T]): int =
 method get*(c: Column, i: int, T: typedesc) {.base.} =
   raise newException(AssertionError, "`get` of base method should not be called.")
 
-method get*[U, T](c: TypedCol[U], i: int): T =
+method get*[U, T](c: Data[U], i: int): T =
   T(c.data[i])
 ]#
 
 proc get*(c: Column, i: int, T: typedesc): T =
-  if c of TypedCol[T]:
-    result = cast[TypedCol[T]](c).data[i]
+  if c of Data[T]:
+    result = cast[Data[T]](c).data[i]
   else:
     raise newException(ValueError, "Column is not of type " & name(T))
 
@@ -83,12 +83,12 @@ proc get*(c: Column, i: int, T: typedesc): T =
 method getString*(c: Column, i: int): string {.base.} =
   raise newException(AssertionError, "`get` of base method should not be called.")
 
-method getString*[T](c: TypedCol[T], i: int): string =
+method getString*[T](c: Data[T], i: int): string =
   $c.data[i]
 
 
-template assertType*(c: Column, T: typedesc): TypedCol[T] =
-  if not (c of TypedCol[T]):
+template assertType*(c: Column, T: typedesc): Data[T] =
+  if not (c of Data[T]):
     let pos = instantiationInfo()
     let msg = "Expected column of type [$1], got [$2] at $3:$4" % [
       name(T),
@@ -98,18 +98,18 @@ template assertType*(c: Column, T: typedesc): TypedCol[T] =
     ]
     echo msg
     raise newException(ValueError, msg)
-  cast[TypedCol[T]](c)
+  cast[Data[T]](c)
 
-template assertTypeUnsafe*(c: Column, T: typedesc): TypedCol[T] =
-  cast[TypedCol[T]](c)
+template assertTypeUnsafe*(c: Column, T: typedesc): Data[T] =
+  cast[Data[T]](c)
 
 template toTyped*(newCol: untyped, c: Column, T: typedesc): untyped =
   ## Alternative to assertType.
   ## Pro: - The user doesn't have to decide between let or var.
   ## Con: - Doesn't emphasize that there is an assertion.
-  if not (c of TypedCol[T]):
+  if not (c of Data[T]):
     raise newException(ValueError, "Expected column of type " & name(T))
-  let newCol = cast[TypedCol[T]](c)
+  let newCol = cast[Data[T]](c)
 
 # -----------------------------------------------------------------------------
 # Macro helpers
@@ -123,7 +123,7 @@ macro multiImpl(c: Column, cTyped: untyped, types: untyped, procBody: untyped): 
   for t in types:
     echo t.treeRepr
     let elifBranch = newNimNode(nnkElifBranch)
-    let cond = infix(c, "of", newNimNode(nnkBracketExpr).add(bindSym"TypedCol", t))
+    let cond = infix(c, "of", newNimNode(nnkBracketExpr).add(bindSym"Data", t))
     let body = newStmtList()
     body.add(newLetStmt(cTyped, newCall(bindSym"assertTypeUnsafe", c, t)))
     body.add(procBody)
@@ -134,27 +134,27 @@ macro multiImpl(c: Column, cTyped: untyped, types: untyped, procBody: untyped): 
   echo result.repr
 
 template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
-  if c of TypedCol[int8]:
+  if c of Data[int8]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int8)
     procBody
-  elif c of TypedCol[int16]:
+  elif c of Data[int16]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int16)
     procBody
-  elif c of TypedCol[int32]:
+  elif c of Data[int32]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int32)
     procBody
-  elif c of TypedCol[int64]:
+  elif c of Data[int64]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int64)
     procBody
   # FIXME: Do we really need an implementation for int or can we generically
   # apply some casts to any of the other types?
-  elif c of TypedCol[int]:
+  elif c of Data[int]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(int)
     procBody
-  elif c of TypedCol[float32]:
+  elif c of Data[float32]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(float32)
     procBody
-  elif c of TypedCol[float64]:
+  elif c of Data[float64]:
     let `cTyped` {.inject.} = c.assertTypeUnsafe(float64)
     procBody
 
@@ -162,11 +162,11 @@ template defaultImpls(c: Column, cTyped: untyped, procBody: untyped): untyped =
 # Iterators
 # -----------------------------------------------------------------------------
 
-iterator items*[T](c: TypedCol[T]): T =
+iterator items*[T](c: Data[T]): T =
   for x in items(c.data):
     yield x
 
-iterator enumerate*[T](c: TypedCol[T]): (int, T) =
+iterator enumerate*[T](c: Data[T]): (int, T) =
   var i = 0
   for x in items(c.data):
     yield (i, x)
@@ -176,12 +176,12 @@ iterator enumerate*[T](c: TypedCol[T]): (int, T) =
 # Conversion
 # -----------------------------------------------------------------------------
 
-proc toTypeless*[T](c: TypedCol[T]): Column = c
+proc toTypeless*[T](c: Data[T]): Column = c
   ## Converts a typed column into an untyped column, which can obviously
   ## be auto-casted anyway. The function only exists as a syntactical
   ## convenience internally for unit tests.
 
-proc toSequence*[T](c: TypedCol[T]): seq[T] =
+proc toSequence*[T](c: Data[T]): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
   when impl == Impl.Standard:
     c.data
@@ -192,7 +192,7 @@ proc toSequence*(c: Column, T: typedesc): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
   c.assertType(T).toSequence()
 
-proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
+proc toTensor*[T](c: Data[T]): Tensor[T] =
   when impl == Impl.Standard:
     c.data.toTensor
   else:
@@ -207,14 +207,14 @@ proc toTensor*(c: Column, T: typedesc): Tensor[T] =
 
 #[
 # FIXME: Why doesn't this work with a typedesc?
-proc sum*[T](c: TypedCol[T], R: typedesc): R =
+proc sum*[T](c: Data[T], R: typedesc): R =
   var sum: R = 0
   for x in c.data:
     sum += R(x) # typedesc can't be used as type conversion?
   return sum
 ]#
 
-proc sumGeneric*[T, R](c: TypedCol[T]): R =
+proc sumGeneric*[T, R](c: Data[T]): R =
   ## Most generic implementation of a sum, where the result type is generic
   ## as well.
   # FIXME: Why can I not call it `sum`?
@@ -223,7 +223,7 @@ proc sumGeneric*[T, R](c: TypedCol[T]): R =
     sum += R(x)
   return sum
 
-proc sum*[T](c: TypedCol[T]): float =
+proc sum*[T](c: Data[T]): float =
   when impl == Impl.Standard:
     # c.sum(float)
     sumGeneric[T, float](c)
@@ -245,7 +245,7 @@ proc sum*(c: Column): float =
 proc mean*(c: Column): float =
   c.sum() / c.len.float
 
-proc maxNaive*[T](c: TypedCol[T]): T =
+proc maxNaive*[T](c: Data[T]): T =
   if c.len == 0:
     return T(0)
   else:
@@ -255,7 +255,7 @@ proc maxNaive*[T](c: TypedCol[T]): T =
         curMax = c.arr[i]
     return curMax
 
-proc max*[T](c: TypedCol[T]): T =
+proc max*[T](c: Data[T]): T =
   when impl == Impl.Standard:
     # Optimized implementation. Seems to be faster for larger types (64 bit)
     # but slower for smaller types (16 bit)
@@ -290,18 +290,18 @@ proc max*(c: Column): float =
 # Comparison
 # -----------------------------------------------------------------------------
 
-proc `==`*[T](c: TypedCol[T], scalar: T): TypedCol[bool] =
+proc `==`*[T](c: Data[T], scalar: T): Data[bool] =
   when impl == Impl.Standard:
-    result = newTypedCol[bool](c.len)
+    result = newData[bool](c.len)
     for i in 0 ..< c.len:
       result.data[i] = c.data[i] == scalar
   elif impl == Impl.Arraymancer:
-    result = TypedCol[bool](data: c.data.map_inline(x == scalar))
+    result = Data[bool](data: c.data.map_inline(x == scalar))
 
-proc `==`*[T, S](a: TypedCol[T], b: TypedCol[S]): TypedCol[bool] =
+proc `==`*[T, S](a: Data[T], b: Data[S]): Data[bool] =
   when impl == Impl.Standard:
-    result = newTypedCol[bool](c.len)
+    result = newData[bool](c.len)
     for i in 0 ..< c.len:
       result.data[i] = a.data[i] == b.data[i]
   elif impl == Impl.Arraymancer:
-    result = TypedCol[bool](data: map2_inline(a.data, b.data, x == y))
+    result = Data[bool](data: map2_inline(a.data, b.data, x == y))

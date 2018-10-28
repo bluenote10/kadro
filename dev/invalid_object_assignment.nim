@@ -6,11 +6,11 @@ when false:
     Column* = object of RootObj
       typeInfo*: pointer
 
-    TypedCol* {.shallow.} [T] = object of Column
+    Data* {.shallow.} [T] = object of Column
       data*: seq[T]
 
 
-  proc toTypeless*[T](c: TypedCol[T]): Column =
+  proc toTypeless*[T](c: Data[T]): Column =
     #c
 
     #let x: Column = c
@@ -18,7 +18,7 @@ when false:
 
     result = cast[Column](c)
 
-  let a = TypedCol[int]()
+  let a = Data[int]()
   let b = a.toTypeless
 
 when true:
@@ -28,7 +28,6 @@ when true:
 
   proc toBase*(x: Sub): Base =
     x
-  
+
   let a = Sub()
   let base1: Base = cast[Base](a)
-  

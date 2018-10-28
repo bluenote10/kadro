@@ -9,6 +9,12 @@ type
     columns: OrderedTable[string, Column] # we'll probably have to make it a ref table
 
 
+proc toColumnOptional[T](x: T): Column =
+  when T is Column:
+    x
+  else:
+    x.toColumn
+
 proc fromTable*(columns: OrderedTable[string, Column]): DataFrame =
   let keys = toSeq(keys(columns))
   if keys.len > 0:
@@ -32,12 +38,12 @@ proc fromArray*(columns: openarray[(string, Column)]): DataFrame =
   )
 
 macro newDataFrame*(columns: untyped): DataFrame =
-  # for table constructors we inject the toTypeless conversion as a convenience,
+  # for table constructors we inject the toColumn conversion as a convenience,
   # because otherwise Nim's first-element-determines-type is a bit inconvenient.
   if columns.kind == nnkTableConstr:
     for colExpr in columns:
       expectKind colExpr, nnkExprColonExpr
-      colExpr[1] = newCall(bindSym"toTypeless", colExpr[1])
+      colExpr[1] = newCall(bindSym"toColumnOptional", colExpr[1])
 
   result = newCall(bindSym"fromArray", columns)
   # echo result.repr
@@ -81,6 +87,6 @@ proc toCsv*(df: DataFrame, filename: string, sep: char = ';') =
       if j > 0:
         file.write(sep)
       #file.write(col.data[i])
-      file.write(col.getString(i))
+      file.write(col.data.getString(i))
       j += 1
     file.write("\n")

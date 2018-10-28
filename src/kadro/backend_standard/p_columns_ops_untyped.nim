@@ -20,9 +20,13 @@ import p_utils
 # Conversion
 # -----------------------------------------------------------------------------
 
-proc toSequence*(c: Column, T: typedesc): seq[T] =
+proc toSequence*(c: DataUntyped, T: typedesc): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
   c.assertType(T).toSequence()
+
+proc toSequence*(c: Column, T: typedesc): seq[T] =
+  ## https://github.com/nim-lang/Nim/issues/7322
+  c.data.assertType(T).toSequence()
 
 # temporarily deactivated to speed up compilation
 # maybe move into separate extension module
@@ -34,8 +38,8 @@ proc toSequence*(c: Column, T: typedesc): seq[T] =
 # Type casts
 # -----------------------------------------------------------------------------
 
-template assertType*(c: Column, T: typedesc): TypedCol[T] =
-  if not (c of TypedCol[T]):
+template assertType*(c: DataUntyped, T: typedesc): Data[T] =
+  if not (c of Data[T]):
     let pos = instantiationInfo()
     let msg = "Expected column of type [$1], got [$2] at $3:$4" % [
       name(T),
@@ -44,10 +48,10 @@ template assertType*(c: Column, T: typedesc): TypedCol[T] =
       $pos.line,
     ]
     raise newException(ValueError, msg)
-  cast[TypedCol[T]](c)
+  cast[Data[T]](c)
 
-template assertTypeUnsafe*(c: Column, T: typedesc): TypedCol[T] =
-  cast[TypedCol[T]](c)
+template assertTypeUnsafe*(c: DataUntyped, T: typedesc): Data[T] =
+  cast[Data[T]](c)
 
 
 # -----------------------------------------------------------------------------
@@ -62,7 +66,7 @@ proc get*(c: Column, i: int, T: typedesc): T =
   # TODO: This should probably be changed to a proper `[]` operator
   # once the typed column has accessors. The syntax will probably
   # be something like [<index-expression>, <typedesc>].
-  result = c.assertType(T).data[i]
+  result = c.data.assertType(T).data[i]
 
 
 # -----------------------------------------------------------------------------
@@ -98,7 +102,7 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
       let ti = getTypeInfo(T)
       echo "registering ", methodNameString, " for ", name(T), " (typeInfo: ", ti, ")"
 
-      proc instSymbol*(colUntyped: Column): resultType {.gensym.} =
+      proc instSymbol*(colUntyped: DataUntyped): resultType {.gensym.} =
         let col {.inject.} = colUntyped.assertType(T)
         op
 
@@ -113,22 +117,25 @@ macro implementUnary(methodName: untyped, resultType: typed, op: untyped): untyp
   # add the actual method performing the lookup
   template defineMethod(methodName, resultType, tableSymbol) =
     proc methodName*(c: Column): resultType =
-      let ti = c.typeInfo
+      let ti = c.data.typeInfo
       # instead of using the cast we could store the real function
       # signatures in the table.
       let fPointer = tableSymbol[ti]
-      let f = cast[proc (c: Column): resultType {.nimcall.}](fPointer)
-      f(c)
+      let x = c.data
+      let f = cast[proc (cOther: DataUntyped): resultType {.nimcall.}](fPointer)
+      # FIXME, this seems to be a Nim bug, accessing c.data behind the cast isn't possible, haha
+      # f(c.data)
+      f(c.data)
 
   result += getAst(defineMethod(
     methodName, resultType, tableSymbol
   ))
   echo result.repr
 
-implementUnary(abs, Column): col.abs()
-implementUnary(sin, Column): col.sin()
-implementUnary(cos, Column): col.cos()
-implementUnary(tan, Column): col.tan()
+implementUnary(abs, Column): col.abs().toColumn
+implementUnary(sin, Column): col.sin().toColumn
+implementUnary(cos, Column): col.cos().toColumn
+implementUnary(tan, Column): col.tan().toColumn
 
 forEachType(T in SomeNumber):
   registerInstantiationAbs(T)
@@ -140,22 +147,22 @@ forEachType(T in SomeNumber):
 # Aggregations
 # -----------------------------------------------------------------------------
 
-var registeredSumProcs = initTable[pointer, Column -> float]()
+var registeredSumProcs = initTable[pointer, DataUntyped -> float]()
 
 template registerSingleColumnType*(T: typedesc) =
   let ti = getTypeInfo(T)
   echo "registering single column ops for typeInfo: ", ti
 
-  proc sum_impl*(c: Column): float {.gensym.} =
+  proc sum_impl*(c: DataUntyped): float {.gensym.} =
     let cTyped = c.assertType(T)
     cTyped.sum()
 
   registeredSumProcs[ti] = sum_impl
 
 proc sum*(c: Column): float =
-  let ti = c.typeInfo
+  let ti = c.data.typeInfo
   let f = registeredSumProcs[ti]
-  f(c)
+  f(c.data)
 
 
 var registeredMaxProcs = initTable[(pointer, pointer), pointer]()
@@ -166,7 +173,7 @@ template registerColumnPairType*(T: typedesc, R: typedesc) =
   let tiRes = getTypeInfo(R)
   echo "registering column pair ops for typeInfo: T = ", tiCol, " R = ", tiRes
 
-  proc max_impl(c: Column): R {.gensym.} =
+  proc max_impl(c: DataUntyped): R {.gensym.} =
     type RR = R
     let cTyped = c.assertType(T)
     RR(cTyped.max())
@@ -174,7 +181,7 @@ template registerColumnPairType*(T: typedesc, R: typedesc) =
   registeredMaxProcs[(tiCol, tiRes)] = cast[pointer](max_impl)
 
 proc max*(c: Column, R: typedesc): R =
-  let tiCol = c.typeInfo
+  let tiCol = c.data.typeInfo
   let tiRes = getTypeInfo(R)
   let fPointer = registeredMaxProcs[(tiCol, tiRes)]
   let f = cast[proc (c: Column): R {.nimcall.}](fPointer)
@@ -184,9 +191,9 @@ proc max*(c: Column, R: typedesc): R =
 # Comparison (untyped)
 # -----------------------------------------------------------------------------
 
-proc `==`*[T](c: Column, scalar: T): TypedCol[bool] =
-  result = newTypedCol[bool](c.len)
-  let cTyped = c.assertType(T)
+proc `==`*[T](c: Column, scalar: T): Data[bool] =
+  result = newData[bool](c.len)
+  let cTyped = c.data.assertType(T)
   # TODO: it would be nice if we had a `assertTypeOrConvertableTo(T)`
   for i in 0 ..< c.len:
     result.data[i] = cTyped.data[i] == scalar

@@ -20,7 +20,7 @@ import p_utils
 # Iterators
 # -----------------------------------------------------------------------------
 
-iterator items*[T](c: TypedCol[T]): T =
+iterator items*[T](c: Data[T]): T =
   if c.index is BoolIndex:
     let index = cast[BoolIndex](c.index)
     for i in 0 ..< c.data.len:
@@ -30,11 +30,11 @@ iterator items*[T](c: TypedCol[T]): T =
     let index = cast[IntIndex](c.index)
     for i in index.indices:
       yield c.data[i]
-  else:    
+  else:
     for x in items(c.data):
       yield x
 
-iterator mitems*[T](c: var TypedCol[T]): var T =
+iterator mitems*[T](c: var Data[T]): var T =
   if c.index is BoolIndex:
     let index = cast[BoolIndex](c.index)
     for i in 0 ..< c.data.len:
@@ -44,11 +44,11 @@ iterator mitems*[T](c: var TypedCol[T]): var T =
     let index = cast[IntIndex](c.index)
     for i in index.indices:
       yield c.data[i]
-  else:    
+  else:
     for x in mitems(c.data):
       yield x
 
-iterator enumerate*[T](c: TypedCol[T]): (int, T) =
+iterator enumerate*[T](c: Data[T]): (int, T) =
   var i = 0
   for x in items(c.data):
     yield (i, x)
@@ -59,24 +59,30 @@ iterator enumerate*[T](c: TypedCol[T]): (int, T) =
 # Conversion
 # -----------------------------------------------------------------------------
 
-proc toTypeless*[T](c: TypedCol[T]): Column =
+#[
+proc toTypeless*[T](c: Data[T]): Column =
   ## Converts a typed column into an untyped column.
   c
+]#
 
-proc toSequence*[T](c: TypedCol[T]): seq[T] =
+proc toColumn*[T](c: Data[T]): Column =
+  ## Converts a typed column into an untyped column.
+  Column(data: c)
+
+proc toSequence*[T](c: Data[T]): seq[T] =
   ## https://github.com/nim-lang/Nim/issues/7322
   c.data
 
 # temporarily deactivated to speed up compilation
 # maybe move into separate extension module
-# proc toTensor*[T](c: TypedCol[T]): Tensor[T] =
+# proc toTensor*[T](c: Data[T]): Tensor[T] =
 #   c.data.toTensor
 
 # -----------------------------------------------------------------------------
 # Unary operations
 # -----------------------------------------------------------------------------
 
-template applyInline*(c: var TypedCol, op: untyped): untyped =
+template applyInline*(c: var Data, op: untyped): untyped =
   # ensure that if t is the result of a function it is not called multiple times.
   # since the assignment is shallow, modifying z should be fine.
   var z = c
@@ -85,7 +91,7 @@ template applyInline*(c: var TypedCol, op: untyped): untyped =
     x = op
 
 
-template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
+template mapInline*[T](c: Data[T], op: untyped): untyped =
   # ensure that if t is the result of a function it is not called multiple times.
   let z = c
 
@@ -99,7 +105,7 @@ template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
   # withMemoryOptimHints()
   # let data{.restrict.} = dest.dataArray # Warning ⚠: data pointed to will be mutated
 
-  var dest = newTypedColUninit[outType](z.len)
+  var dest = newDataUninit[outType](z.len)
 
   # TODO: enable omp_parallel_blocks(block_offset, block_size, dest.size):
   for i, x {.inject.} in z.enumerate():
@@ -107,14 +113,14 @@ template mapInline*[T](c: TypedCol[T], op: untyped): untyped =
   dest
 
 
-proc abs*[T: SomeNumber](c: TypedCol[T]): TypedCol[T] =
+proc abs*[T: SomeNumber](c: Data[T]): Data[T] =
   when T is SomeUnsignedInt:
     c # TODO: we should copy here to avoid unexpected behavior
   else:
     c.mapInline:
       abs(x).T
 
-proc absInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+proc absInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
   when T is SomeUnsignedInt:
     c
   else:
@@ -123,14 +129,14 @@ proc absInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardab
     return c
 
 
-proc sin*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
-  #result = newTypedCol[float](c.len)
+proc sin*[T: SomeNumber](c: Data[T]): Data[float] =
+  #result = newData[float](c.len)
   #for i, x in c.data:
   #  result.data[i] = math.sin(x.float)
   c.mapInline:
     math.sin(x.float)
 
-proc sinInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+proc sinInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
   #for i, x in c.data:
   #  c.data[i] = math.sin(x.float).T
   c.applyInline:
@@ -138,21 +144,21 @@ proc sinInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardab
   return c
 
 
-proc cos*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
+proc cos*[T: SomeNumber](c: Data[T]): Data[float] =
   c.mapInline:
     math.cos(x.float)
 
-proc cosInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+proc cosInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
   c.applyInline:
     math.cos(x.float).T
   return c
 
 
-proc tan*[T: SomeNumber](c: TypedCol[T]): TypedCol[float] =
+proc tan*[T: SomeNumber](c: Data[T]): Data[float] =
   c.mapInline:
     math.tan(x.float)
 
-proc tanInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardable.} =
+proc tanInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
   c.applyInline:
     math.tan(x.float).T
   return c
@@ -162,7 +168,7 @@ proc tanInPlace*[T: SomeNumber](c: var TypedCol[T]): var TypedCol[T] {.discardab
 # Aggregations
 # -----------------------------------------------------------------------------
 
-proc sum*[T](c: TypedCol[T], R: typedesc = float): R =
+proc sum*[T](c: Data[T], R: typedesc = float): R =
   # Required because of: https://github.com/nim-lang/Nim/issues/8403
   type RR = R
   var sum: R = 0
@@ -171,7 +177,7 @@ proc sum*[T](c: TypedCol[T], R: typedesc = float): R =
   return sum
 
 
-proc maxNaive*[T](c: TypedCol[T]): T =
+proc maxNaive*[T](c: Data[T]): T =
   if c.len == 0:
     return T(0)
   else:
@@ -182,7 +188,7 @@ proc maxNaive*[T](c: TypedCol[T]): T =
     return curMax
 
 
-proc max*[T](c: TypedCol[T]): T =
+proc max*[T](c: Data[T]): T =
   # Optimized implementation. Seems to be faster for larger types (64 bit)
   # but slower for smaller types (16 bit)
   if c.len == 0:
@@ -206,13 +212,13 @@ proc max*[T](c: TypedCol[T]): T =
 # Comparison
 # -----------------------------------------------------------------------------
 
-proc `==`*[T](c: TypedCol[T], scalar: T): TypedCol[bool] =
-  result = newTypedCol[bool](c.len)
+proc `==`*[T](c: Data[T], scalar: T): Data[bool] =
+  result = newData[bool](c.len)
   for i in 0 ..< c.len:
     result.data[i] = c.data[i] == scalar
 
-proc `==`*[T, S](a: TypedCol[T], b: TypedCol[S]): TypedCol[bool] =
-  result = newTypedCol[bool](a.len)
+proc `==`*[T, S](a: Data[T], b: Data[S]): Data[bool] =
+  result = newData[bool](a.len)
   for i in 0 ..< a.len:
     result.data[i] = a.data[i] == b.data[i]
 

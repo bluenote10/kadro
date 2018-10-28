@@ -5,7 +5,8 @@ import math
 
 
 proc newCol[T](s: openarray[T]): Column =
-  s.toColumn.toTypeless
+  #s.toColumn.toTypeless
+  s.toColumn
 
 
 suite "[untyped] conversion":
@@ -25,7 +26,7 @@ suite "[untyped] general":
 
   test("$"):
     let c = newCol([1, 2, 3])
-    check $c == "TypedCol[int](@[1, 2, 3])"
+    check $c == "Data[int](@[1, 2, 3])"
 
   test("typeName"):
     let c = newCol([1, 2, 3])

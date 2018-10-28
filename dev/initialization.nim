@@ -9,7 +9,7 @@ type
   Column* = ref object of RootObj
     typeInfo*: pointer
 
-  TypedCol*[T] = ref object of Column
+  Data*[T] = ref object of Column
     data*: seq[T]  # TODO: remove access
 
 
@@ -26,17 +26,17 @@ func newSeqUninit*[T](len: Natural): seq[T] {.inline.} =
   result.setLen(len)
 ]#
 
-proc newStandard[T](size: int): TypedCol[T] =
-  TypedCol[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
+proc newStandard[T](size: int): Data[T] =
+  Data[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
 
-proc newNoInit[T](size: int): TypedCol[T] {.noInit.} =
-  TypedCol[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
+proc newNoInit[T](size: int): Data[T] {.noInit.} =
+  Data[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
 
-proc newInline[T](size: int): TypedCol[T] {.inline.} =
-  TypedCol[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
+proc newInline[T](size: int): Data[T] {.inline.} =
+  Data[T](typeInfo: getTypeInfo(T), data: newSeq[T](size))
 
-proc newUninit[T](size: int): TypedCol[T] {.inline.} =
-  TypedCol[T](typeInfo: getTypeInfo(T), data: newSeqUninitialized[T](size))
+proc newUninit[T](size: int): Data[T] {.inline.} =
+  Data[T](typeInfo: getTypeInfo(T), data: newSeqUninitialized[T](size))
 
 when false:
   discard newStandard[int](0)

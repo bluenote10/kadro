@@ -14,8 +14,8 @@ suite "DataFrame":
 
     # Note that without the toTypeless macro convenience we need explicit conversion
     let cols = {
-      "A": ones[int](3).toTypeless,
-      "B": zeros[float](3),
+      "A": ones[int](3).toColumn,
+      "B": zeros[float](3).toColumn,
       "C": ["a", "b", "c"].toColumn,
     }
     let df2 = newDataFrame(cols)
@@ -28,3 +28,4 @@ suite "DataFrame":
       "C": ["a", "b", "c"].toColumn,
     })
     df1.toCsv("/tmp/test.csv")
+

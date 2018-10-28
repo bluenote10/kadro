@@ -15,11 +15,14 @@ type
   ColType* {.pure.} = enum
     Standard, ViewMasked, ViewIndexed
 
-  Column* = ref object of RootObj
+  Column* = object
+    data*: DataUntyped
+
+  DataUntyped* = ref object of RootObj
     typeInfo*: pointer
     index*: Index
 
-  TypedCol*[T] = ref object of Column
+  Data*[T] = ref object of DataUntyped
     data*: seq[T]  # TODO: remove access
     size*: int
     kind: ColType

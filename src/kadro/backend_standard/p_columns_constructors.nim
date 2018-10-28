@@ -19,24 +19,24 @@ const implFeatures = getImplFeatures()
 # Base constructors
 # -----------------------------------------------------------------------------
 
-proc newTypedCol*[T](size: int): TypedCol[T] =
-  TypedCol[T](
+proc newData*[T](size: int): Data[T] =
+  Data[T](
     typeInfo: getTypeInfo(T),
     data: newSeq[T](size),
     size: size,
   )
 
 
-proc newTypedColUninit*[T](size: int): TypedCol[T] =
-  TypedCol[T](
+proc newDataUninit*[T](size: int): Data[T] =
+  Data[T](
     typeInfo: getTypeInfo(T),
     data: newSeqUninitialized[T](size),
     size: size,
   )
 
 #[
-proc newTypedColMasked*[T](data: seq[T], mask: Mask): TypedCol[T] =
-  TypedCol[T](
+proc newDataMasked*[T](data: seq[T], mask: Mask): Data[T] =
+  Data[T](
     typeInfo: getTypeInfo(T),
     data: data,
     mask: some(mask),
@@ -44,16 +44,29 @@ proc newTypedColMasked*[T](data: seq[T], mask: Mask): TypedCol[T] =
 ]#
 
 
-proc toColumn*[T](s: openarray[T]): TypedCol[T] =
-  return TypedCol[T](
+proc toData*[T](s: openarray[T]): Data[T] =
+  return Data[T](
     typeInfo: getTypeInfo(T),
     data: @s,
     size: s.len,
   )
 
 
-proc copy*[T](c: TypedCol[T]): TypedCol[T] =
-  return TypedCol[T](
+proc toUntyped*[T](s: openarray[T]): DataUntyped =
+  return Data[T](
+    typeInfo: getTypeInfo(T),
+    data: @s,
+    size: s.len,
+  )
+
+proc toColumn*[T](s: openarray[T]): Column =
+  return Column(
+    data: s.toUntyped
+  )
+
+
+proc copy*[T](c: Data[T]): Data[T] =
+  return Data[T](
     typeInfo: c.typeInfo,
     data: c.data,
     size: c.size,
@@ -64,36 +77,36 @@ proc copy*[T](c: TypedCol[T]): TypedCol[T] =
 # Secondary constructors
 # -----------------------------------------------------------------------------
 
-proc zeros*[T](length: int): TypedCol[T] =
-  var typedCol = newTypedColUninit[T](length)
+proc zeros*[T](length: int): Data[T] =
+  var Data = newDataUninit[T](length)
   when ImplFeature.OpenMP notin implFeatures:
     #for i in 0 ..< length:
-    #  typedCol.data[i] = T(0)
+    #  Data.data[i] = T(0)
     # TODO check types for which memset is valid
-    zeroMem(typedCol.data[0].addr, length * sizeOf(T))
+    zeroMem(Data.data[0].addr, length * sizeOf(T))
   else:
     omp_parallel_countup(i, length):
-      typedCol.data[i] = T(0)
-  return typedCol
+      Data.data[i] = T(0)
+  return Data
 
 
-proc ones*[T](length: int): TypedCol[T] =
-  var typedCol = newTypedColUninit[T](length)
+proc ones*[T](length: int): Data[T] =
+  var Data = newDataUninit[T](length)
   when ImplFeature.OpenMP notin implFeatures:
     for i in 0 ..< length:
-      typedCol.data[i] = T(1)
+      Data.data[i] = T(1)
   else:
     omp_parallel_countup(i, length):
-      typedCol.data[i] = T(1)
-  return typedCol
+      Data.data[i] = T(1)
+  return Data
 
 
-proc arange*[T](length: int): TypedCol[T] =
-  var typedCol = newTypedColUninit[T](length)
+proc arange*[T](length: int): Data[T] =
+  var Data = newDataUninit[T](length)
   when ImplFeature.OpenMP notin implFeatures:
     for i in 0 ..< length:
-      typedCol.data[i] = T(i)
+      Data.data[i] = T(i)
   else:
     omp_parallel_countup(i, length):
-      typedCol.data[i] = T(i)
-  return typedCol
+      Data.data[i] = T(i)
+  return Data
