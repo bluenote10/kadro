@@ -1,4 +1,5 @@
 import options
+import p_utils
 
 type
   Index* = ref object of RootObj
@@ -17,6 +18,7 @@ type
 
   Column* = object
     data*: DataUntyped
+    index*: Index
 
   DataUntyped* = ref object of RootObj
     typeInfo*: pointer
@@ -29,3 +31,11 @@ type
     #mask: Option[Mask]
     #index: Option[Index]
 
+
+template newData*[T](data, size, kind): Data[T] =
+  Data[T](
+    typeInfo: getTypeInfo(T),
+    data: data,
+    size: size,
+    #kind: kind,
+  )

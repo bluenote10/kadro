@@ -21,12 +21,12 @@ import p_utils
 # -----------------------------------------------------------------------------
 
 iterator items*[T](c: Data[T]): T =
-  if c.index is BoolIndex:
+  if c.index of BoolIndex:
     let index = cast[BoolIndex](c.index)
     for i in 0 ..< c.data.len:
       if index.mask[i]:
         yield c.data[i]
-  elif c.index is IntIndex:
+  elif c.index of IntIndex:
     let index = cast[IntIndex](c.index)
     for i in index.indices:
       yield c.data[i]
@@ -35,12 +35,12 @@ iterator items*[T](c: Data[T]): T =
       yield x
 
 iterator mitems*[T](c: var Data[T]): var T =
-  if c.index is BoolIndex:
+  if c.index of BoolIndex:
     let index = cast[BoolIndex](c.index)
     for i in 0 ..< c.data.len:
       if index.mask[i]:
         yield c.data[i]
-  elif c.index is IntIndex:
+  elif c.index of IntIndex:
     let index = cast[IntIndex](c.index)
     for i in index.indices:
       yield c.data[i]
@@ -130,15 +130,10 @@ proc absInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
 
 
 proc sin*[T: SomeNumber](c: Data[T]): Data[float] =
-  #result = newData[float](c.len)
-  #for i, x in c.data:
-  #  result.data[i] = math.sin(x.float)
   c.mapInline:
     math.sin(x.float)
 
 proc sinInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
-  #for i, x in c.data:
-  #  c.data[i] = math.sin(x.float).T
   c.applyInline:
     math.sin(x.float).T
   return c
@@ -169,42 +164,20 @@ proc tanInPlace*[T: SomeNumber](c: var Data[T]): var Data[T] {.discardable.} =
 # -----------------------------------------------------------------------------
 
 proc sum*[T](c: Data[T], R: typedesc = float): R =
-  # Required because of: https://github.com/nim-lang/Nim/issues/8403
-  type RR = R
   var sum: R = 0
-  for x in c.data:
-    sum += RR(x)
+  for x in items(c):
+    sum += R(x)
   return sum
 
 
-proc maxNaive*[T](c: Data[T]): T =
+proc max*[T](c: Data[T]): T =
   if c.len == 0:
     return T(0)
   else:
     var curMax = low(T)
-    for i in 0 ..< c.len:
-      if c.arr[i] > curMax:
-        curMax = c.arr[i]
-    return curMax
-
-
-proc max*[T](c: Data[T]): T =
-  # Optimized implementation. Seems to be faster for larger types (64 bit)
-  # but slower for smaller types (16 bit)
-  if c.len == 0:
-    return low(T)
-  else:
-    var curMax = low(T)
-    var i = 0
-    let nTwoAligned = (c.len shr 1 shl 1)
-    while i < nTwoAligned:
-      let localMax = if c.data[i] > c.data[i+1]: c.data[i] else: c.data[i+1]
-      if localMax > curMax:
-        curMax = localMax
-      i += 2
-    if i < c.len - 1:
-      if c.data[^1] > curMax:
-        curMax = c.data[^1]
+    for x in items(c):
+      if x > curMax:
+        curMax = x
     return curMax
 
 

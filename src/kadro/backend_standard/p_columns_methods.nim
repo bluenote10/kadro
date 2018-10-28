@@ -21,14 +21,25 @@ method len*[T](c: Data[T]): int =
   result = c.size
 
 method getString*(c: DataUntyped, i: int): string {.base.} =
-  raise newException(AssertionError, "`get` of base method should not be called.")
+  raise newException(AssertionError, "`getString` of base method should not be called.")
 
 method getString*[T](c: Data[T], i: int): string =
   # TODO: handle mask/index
   $c.data[i]
 
+method withIndex*(c: DataUntyped, index: Index): DataUntyped {.base.} =
+  raise newException(AssertionError, "`withIndex` of base method should not be called.")
+
+method withIndex*[T](c: Data[T], index: Index): DataUntyped {.base.} =
+  Data[T](
+    typeInfo: c.typeInfo,
+    data: c.data,
+    size: c.size,
+    index: index,
+  )
 
 
+# forwarded proc for Column -- TODO move somewhere else?
 
 proc len*(c: Column): int {.inline.} = c.data.len
 

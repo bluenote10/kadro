@@ -65,6 +65,7 @@ proc toColumn*[T](s: openarray[T]): Column =
   )
 
 
+# TODO should this be a method?
 proc copy*[T](c: Data[T]): Data[T] =
   return Data[T](
     typeInfo: c.typeInfo,

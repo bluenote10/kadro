@@ -214,3 +214,59 @@ when not defined(noDefaultRegistration):
 
 proc mean*(c: Column): float =
   c.sum() / c.len
+
+
+# -----------------------------------------------------------------------------
+# Indexing
+# -----------------------------------------------------------------------------
+
+proc countLen(index: BoolIndex): int =
+  result = 0
+  for b in index.mask:
+    if b:
+      result += 1
+
+
+proc fuseIndex(a: Index, b: Index): Index =
+  if (a of NoIndex or a.isNil) and b of BoolIndex:
+    return b
+  elif a of BoolIndex and b of BoolIndex:
+    let aa = cast[BoolIndex](a)
+    let bb = cast[BoolIndex](b)
+    var res: BoolIndex = BoolIndex(mask: aa.mask)
+    var i = 0
+    var j = 0
+    while i < res.mask.len:
+      if aa.mask[i]:
+        if bb.mask[j]:
+          res.mask[i] = true
+        else:
+          res.mask[i] = false
+        j += 1
+      else:
+        res.mask[i] = false
+      i += 1
+    return res
+  else:
+    raise newException(ValueError, "fuseIndex not implemented for given index combination")
+
+
+template underlyingType[T](x: T): typedesc =
+  type(items(x))
+
+
+proc `[]`*[T](c: Column, indexExpr: T): Column =
+  when T is seq|array and underlyingType(indexExpr) is bool:
+    let index = BoolIndex(mask: @indexExpr)
+    let fusedIndex = fuseIndex(c.index, index)
+    let size = countLen(index)
+    Column(
+      data: c.data.withIndex(fusedIndex),
+      index: fusedIndex,
+    )
+  else:
+    static:
+      error "Unimplemented indexing"
+
+#macro `[]`(c: Column, indexExpr: untyped): untyped =
+
