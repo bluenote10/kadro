@@ -224,8 +224,12 @@ proc mean*(c: Column): float =
 template underlyingType[T](x: T): typedesc =
   type(items(x))
 
-
+#[
 proc `[]`*[T](c: Column, indexExpr: T): Column =
+  # the evaluation isn't short circuiting apparently. This means that
+  # the condition is a compile time error when e.g. T is a Column,
+  # which does not support the underlyingType template due to a
+  # missing items iterator.
   when T is seq|array and underlyingType(indexExpr) is bool:
     let index = BoolIndex(mask: @indexExpr)
     let fusedIndex = fuseIndex(c.index, index)
@@ -236,6 +240,47 @@ proc `[]`*[T](c: Column, indexExpr: T): Column =
   else:
     static:
       error "Unimplemented indexing"
+]#
+
+proc `[]`*(c: Column, indexExpr: openarray[bool]): Column =
+  let index = BoolIndex(mask: @indexExpr)
+  let fusedIndex = fuseIndex(c.index, index)
+  Column(
+    data: c.data.withIndex(fusedIndex),
+    index: fusedIndex,
+  )
+
+
+proc `[]`*(c: Column, indexExpr: Column): Column =
+  # TODO check if we either have a bool are an int-like column and dispatch
+  # accordingly. Currently we only support bool masks.
+  # TODO: add stack depth information to assertType so that the thrown excepction
+  # uses the lineinfo for the usage on client side, not the usage here...
+  let dataTyped = indexExpr.data.assertType(bool)
+  let index = BoolIndex(mask: dataTyped.data)
+  let fusedIndex = fuseIndex(c.index, index)
+  Column(
+    data: c.data.withIndex(fusedIndex),
+    index: fusedIndex,
+  )
+
+
+template `[]`*[T](c: var Column, indexExpr: T): var Column =
+  when T is seq|array and underlyingType(indexExpr) is bool:
+    let index = BoolIndex(mask: @indexExpr)
+    let fusedIndex = fuseIndex(c.index, index)
+    #c.data = c.data.withIndex(fusedIndex)
+    #c.index = fusedIndex
+    #c
+    var newColumn = Column(
+      data: c.data.withIndex(fusedIndex),
+      index: fusedIndex,
+    )
+    newColumn
+  else:
+    static:
+      error "Unimplemented indexing"
+
 
 #macro `[]`(c: Column, indexExpr: untyped): untyped =
 

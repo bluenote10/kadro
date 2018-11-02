@@ -21,6 +21,21 @@ method len*(index: BoolIndex): int =
       result += 1
 
 
+proc `$`*(index: Index): string =
+  #raise newException(AssertionError, "`len` of base method should not be called.")
+  index.repr[0 ..< ^1]
+
+#[
+method `$`*(index: IntIndex): string =
+  index.repr[0..^1]
+
+method `$`*(index: BoolIndex): string =
+  result = 0
+  for b in index.mask:
+    if b:
+      result += 1
+]#
+
 proc fuseIndex*(a: Index, b: Index): Index =
   if (a of NoIndex or a.isNil) and b of BoolIndex:
     return b
