@@ -189,7 +189,7 @@ proc max*(c: Column, R: typedesc): R =
   f(c)
 
 # -----------------------------------------------------------------------------
-# Comparison (untyped)
+# Comparison
 # -----------------------------------------------------------------------------
 
 proc `==`*[T](c: Column, scalar: T): Data[bool] =
@@ -208,6 +208,47 @@ when not defined(noDefaultRegistration):
   registerColumnPairType(int, int)
   registerColumnPairType(int, float)
 
+# -----------------------------------------------------------------------------
+# Assignment
+# -----------------------------------------------------------------------------
+
+var registeredAssignmentProcs = initTable[(pointer, pointer), pointer]()
+
+template registerAssignmentInstantiation*(C: typedesc, T: typedesc) =
+  # Uses the trick from: https://forum.nim-lang.org/t/3267
+  let tiCol = getTypeInfo(C)
+  let tiAss = getTypeInfo(T)
+  echo "registering column pair ops for typeInfo: C = ", tiCol, " T = ", tiAss
+
+  proc assignmentImpl(c: var Column, x: T) {.gensym.} =
+    when not compiles(C(x)):
+      static:
+        error "Cannot convert " & $T & " to " & $C
+    var cTyped = c.data.assertType(C)
+    for el in cTyped.mitems:
+      el = C(x)
+
+  registeredAssignmentProcs[(tiCol, tiAss)] = cast[pointer](assignmentImpl)
+
+proc `<-`*[T](c: var Column, scalar: T) =
+  let tiCol = c.data.typeInfo
+  let tiAss = getTypeInfo(T)
+  let fPointer = registeredAssignmentProcs[(tiCol, tiAss)]
+  let f = cast[proc (cOther: var Column, xOther: T) {.nimcall.}](fPointer)
+  f(c, scalar)
+
+registerAssignmentInstantiation(int, int)
+registerAssignmentInstantiation(float, int)
+registerAssignmentInstantiation(int, float)
+#registerAssignmentInstantiation(int, string)
+
+#forEachType(T in SomeFloat):
+  #forEachType(T in SomeNumber):
+    #registerAssignmentInstantiation(T, T)
+    #registerSingleColumnType(T)
+    #t(T, T)
+
+  
 
 # -----------------------------------------------------------------------------
 # Derived procs
