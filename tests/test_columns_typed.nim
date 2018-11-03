@@ -35,6 +35,17 @@ suite "constructors":
     # not really testable
     # check c.toSequence.any(x => x != 0)
 
+  test("newDataShallow"):
+    # shallowCopy does not work in global scope!?
+    # https://github.com/nim-lang/Nim/issues/644
+    # As a result newDataShallow is only shallow
+    # when used in a local scope :-/
+    proc tester() =
+      var s = @[1, 2, 3]
+      let d = newDataShallow(s)
+      check s.repr == d.data.repr
+    tester()
+  
   test("toColumn"):
     check  [1, 2, 3].toData.toSequence == @[1, 2, 3]
     check @[1, 2, 3].toData.toSequence == @[1, 2, 3]
